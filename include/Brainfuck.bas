@@ -1,7 +1,10 @@
 '$Include:'./Common.bi'
 
+$Console:Only
+
 Do
     Title "Brainfuck"
+    ConsoleTitle Title$
 
     Dim As String programFile: programFile = OpenFileDialog$("Open", "", "*.bf|*.BF|*.Bf|*.bF", "Brainfuck Program Files")
     If Not FileExists(programFile) Then Exit Do
@@ -16,10 +19,9 @@ Loop
 End
 
 Sub RunBrainfuckProgram (programString As String)
-    ReDim As Unsigned Byte memory(0 To 0)
-    ReDim As Long loopStack(0 To 0)
+    ReDim As Unsigned Byte memory(0 To 29999)
     Dim As Unsigned Byte instruction
-    Dim As Long instructionPointer, dataPointer, programLength, loopStackPointer
+    Dim As Long instructionPointer, memoryPointer, programLength, bracketOpenCount, bracketCloseCount
     Dim As String program, windowTitle
 
     ' Optimize program stream
@@ -29,91 +31,120 @@ Sub RunBrainfuckProgram (programString As String)
 
         ' Only accept supported commands and discard the rest
         Select Case instruction
-            Case 62, 60, 43, 45, 46, 44 ' regular commands
+            Case KEY_GREATER_THAN, KEY_LESS_THAN, KEY_PLUS, KEY_MINUS, KEY_DOT, KEY_COMMA ' regular commands
                 program = program + Chr$(instruction)
 
-            Case 91 ' basic nested loop check
-                loopStackPointer = loopStackPointer + 1
+            Case KEY_OPEN_BRACKET ' basic loop check
+                bracketOpenCount = bracketOpenCount + 1
                 program = program + Chr$(instruction)
 
-            Case 93 ' basic nested loop check
-                loopStackPointer = loopStackPointer - 1
+            Case KEY_CLOSE_BRACKET ' basic loop check
+                bracketCloseCount = bracketCloseCount + 1
                 program = program + Chr$(instruction)
 
         End Select
     Next
 
-    If loopStackPointer <> 0 Then Error 17
+    If bracketOpenCount - bracketCloseCount <> 0 Then Error ERROR_SYNTAX_ERROR ' brackets are not matched
 
-    ' Re-initialize stuff based on the optimizied stream
+    ' Re-initialize stuff based on the optimized stream
     instructionPointer = 1
+    bracketOpenCount = 0
+    bracketCloseCount = 0
     programLength = Len(program)
 
     Do Until instructionPointer > programLength
         instruction = Asc(program, instructionPointer)
 
         Select Case instruction
-            Case 62 ' >
-                dataPointer = dataPointer + 1
+            Case KEY_GREATER_THAN
+                memoryPointer = memoryPointer + 1 ' increment the memory pointer
 
-                ' Dynamically grow the memory space as needed
-                If dataPointer > UBound(memory) Then ReDim Preserve As Unsigned Byte memory(0 To dataPointer)
+                Select Case memoryPointer
+                    Case Is > UBound(memory) ' if we moved pass the memory address space
+                        ReDim Preserve As Unsigned Byte memory(0 To memoryPointer) ' dynamically grow the memory space preserving contents
 
-            Case 60 ' <
-                dataPointer = dataPointer - 1 ' we'll let the data pointer move lower than zero (obviously this is a bug in the BF program)
+                    Case Is < 0 ' can happen if we move past the max value of long
+                        Error ERROR_OVERFLOW ' throw an error
+                End Select
 
-            Case 43 ' +
-                memory(dataPointer) = memory(dataPointer) + 1
+            Case KEY_LESS_THAN
+                memoryPointer = memoryPointer - 1 ' decrement the memory pointer
 
-            Case 45 ' -
-                memory(dataPointer) = memory(dataPointer) - 1
+                If memoryPointer < 0 Then Error ERROR_MEMORY_REGION_OUT_OF_RANGE ' cannot go to negative address space
 
-            Case 46 ' .
-                Print Chr$(memory(dataPointer));
+            Case KEY_PLUS
+                memory(memoryPointer) = memory(memoryPointer) + 1
 
-            Case 44 ' ,
+            Case KEY_MINUS
+                memory(memoryPointer) = memory(memoryPointer) - 1
+
+            Case KEY_DOT
+                Print Chr$(memory(memoryPointer));
+
+            Case KEY_COMMA
                 ' Get the current window title and then tell the user that we need keyboard input
                 windowTitle = Title$
                 Title "[WAITING FOR INPUT] " + windowTitle
+                ConsoleTitle Title$
 
-                memory(dataPointer) = Asc(Input$(1))
+                memory(memoryPointer) = Asc(Input$(1))
 
                 Title windowTitle ' set the window title the way it was
+                ConsoleTitle Title$
 
-            Case 91 ' [
-                If memory(dataPointer) = 0 Then
-                    loopStackPointer = loopStackPointer + 1
+            Case KEY_OPEN_BRACKET
+                If memory(memoryPointer) = 0 Then
+                    bracketOpenCount = 0 ' reset bracket count
+                    instructionPointer = instructionPointer + 1 ' move past this bracket
 
-                    ' Dynamically increase the loop stack
-                    If loopStackPointer > UBound(loopStack) Then ReDim Preserve As Long loopStack(0 To loopStackPointer)
-                    loopStack(loopStackPointer) = instructionPointer
-
-                    Do
-                        instructionPointer = instructionPointer + 1
+                    Do Until instructionPointer > programLength
                         instruction = Asc(program, instructionPointer)
-                        If instruction = 91 Then loopStackPointer = loopStackPointer + 1
-                        If instruction = 93 Then loopStackPointer = loopStackPointer - 1
-                    Loop Until loopStackPointer = 0
-                Else
-                    loopStackPointer = loopStackPointer + 1
 
-                    ' Dynamically increase the loop stack
-                    If loopStackPointer > UBound(loopStack) Then ReDim Preserve As Long loopStack(0 To loopStackPointer)
-                    loopStack(loopStackPointer) = instructionPointer
+                        Select Case instruction
+                            Case KEY_OPEN_BRACKET ' we found a nested bracket
+                                bracketOpenCount = bracketOpenCount + 1 ' increment bracket counter
+
+                            Case KEY_CLOSE_BRACKET
+                                If bracketOpenCount = 0 Then ' we found the matching bracket
+                                    Exit Do
+                                Else
+                                    bracketOpenCount = bracketOpenCount - 1 ' decrement bracket counter
+                                End If
+
+                        End Select
+
+                        instructionPointer = instructionPointer + 1
+                    Loop
                 End If
 
-            Case 93 ' ]
-                If memory(dataPointer) <> 0 Then
-                    instructionPointer = loopStack(loopStackPointer)
-                Else
-                    loopStackPointer = loopStackPointer - 1
+            Case KEY_CLOSE_BRACKET
+                If memory(memoryPointer) <> 0 Then
+                    bracketCloseCount = 0
+                    instructionPointer = instructionPointer - 1
+
+                    Do While instructionPointer > 0
+                        instruction = Asc(program, instructionPointer)
+
+                        Select Case instruction
+                            Case KEY_CLOSE_BRACKET
+                                bracketCloseCount = bracketCloseCount + 1
+
+                            Case KEY_OPEN_BRACKET
+                                If bracketCloseCount = 0 Then ' we found the matching bracket
+                                    Exit Do
+                                Else
+                                    bracketCloseCount = bracketCloseCount - 1
+                                End If
+                        End Select
+
+                        instructionPointer = instructionPointer - 1
+                    Loop
                 End If
 
         End Select
 
         instructionPointer = instructionPointer + 1
-
-        ' Echo "IP =" + Str$(instructionPointer) + " DP =" + Str$(dataPointer) + " LSP =" + Str$(loopStackPointer)
     Loop
 End Sub
 
