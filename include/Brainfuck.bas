@@ -1,22 +1,19 @@
-'$Include:'./Common.bi'
+'$Include:'./ANSIPrint.bi'
+$Console
 
-$Console:Only
-
-Declare Library
-    Function getchar&
-    Sub putchar (ByVal ch As Long)
-End Declare
+Screen NewImage(8 * 160, 16 * 50, 32)
 
 Do
-    ConsoleTitle "Brainfuck"
+    Title "Brainfuck64"
 
     Dim As String programFile: programFile = OpenFileDialog$("Open", "", "*.bf|*.BF|*.Bf|*.bF", "Brainfuck Program Files")
     If Not FileExists(programFile) Then Exit Do
 
     Cls
+    ResetANSIEmulator
     RunBrainfuckProgram LoadFile(programFile)
 
-    ConsoleTitle "Press any key to run another file...": Sleep 3600
+    Title "Press any key to run another file...": Sleep 3600
 Loop
 
 End
@@ -83,16 +80,20 @@ Sub RunBrainfuckProgram (programString As String)
                 memory(memoryPointer) = memory(memoryPointer) - 1
 
             Case KEY_DOT
-                putchar memory(memoryPointer)
+                If Not PrintANSICharacter(memory(memoryPointer)) Then
+                    Print
+                    ResetANSIEmulator
+                End If
 
             Case KEY_COMMA
                 ' Get the current window title and then tell the user that we need keyboard input
                 windowTitle = Title$
-                ConsoleTitle "[WAITING FOR INPUT] " + windowTitle
+                Title "[WAITING FOR INPUT] " + windowTitle
 
-                memory(memoryPointer) = getchar
+                memory(memoryPointer) = Asc(Input$(1))
+                Echo Chr$(memory(memoryPointer))
 
-                ConsoleTitle windowTitle ' set the window title the way it was
+                Title windowTitle ' set the window title the way it was
 
             Case KEY_OPEN_BRACKET
                 If memory(memoryPointer) = 0 Then
@@ -159,4 +160,6 @@ Function LoadFile$ (pathString As String)
         Close fh
     End If
 End Function
+
+'$Include:'./ANSIPrint.bas'
 
