@@ -2,18 +2,21 @@
 
 $Console:Only
 
+Declare Library
+    Function getchar&
+    Sub putchar (ByVal ch As Long)
+End Declare
+
 Do
-    Title "Brainfuck"
-    ConsoleTitle Title$
+    ConsoleTitle "Brainfuck"
 
     Dim As String programFile: programFile = OpenFileDialog$("Open", "", "*.bf|*.BF|*.Bf|*.bF", "Brainfuck Program Files")
     If Not FileExists(programFile) Then Exit Do
 
     Cls
-
     RunBrainfuckProgram LoadFile(programFile)
 
-    Title "Press any key to run another file...": Sleep 3600
+    ConsoleTitle "Press any key to run another file...": Sleep 3600
 Loop
 
 End
@@ -80,18 +83,16 @@ Sub RunBrainfuckProgram (programString As String)
                 memory(memoryPointer) = memory(memoryPointer) - 1
 
             Case KEY_DOT
-                Print Chr$(memory(memoryPointer));
+                putchar memory(memoryPointer)
 
             Case KEY_COMMA
                 ' Get the current window title and then tell the user that we need keyboard input
                 windowTitle = Title$
-                Title "[WAITING FOR INPUT] " + windowTitle
-                ConsoleTitle Title$
+                ConsoleTitle "[WAITING FOR INPUT] " + windowTitle
 
-                memory(memoryPointer) = Asc(Input$(1))
+                memory(memoryPointer) = getchar
 
-                Title windowTitle ' set the window title the way it was
-                ConsoleTitle Title$
+                ConsoleTitle windowTitle ' set the window title the way it was
 
             Case KEY_OPEN_BRACKET
                 If memory(memoryPointer) = 0 Then
