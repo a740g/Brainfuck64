@@ -1,7 +1,23 @@
-'$Include:'./ANSIPrint.bi'
-$Console
+'---------------------------------------------------------------------------------------------------------------------------------------------------------------
+' QB64-PE Brainfuck interpreter
+' Copyright (c) 2023 Samuel Gomes
+'---------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-Screen NewImage(8 * 160, 16 * 50, 32)
+'$Include:'./ANSIPrint.bi'
+
+$Unstable:Http
+
+'---------------------------------------------------------------------------------------------------------------------------------------------------------------
+' EXTERNAL LIBRARIES
+'---------------------------------------------------------------------------------------------------------------------------------------------------------------
+Declare CustomType Library
+    Function GetTicks~&&
+End Declare
+'---------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Dim As Unsigned Integer64 startTick, deltaTick
+
+Screen NewImage(8 * 80, 16 * 30, 32)
 
 Do
     Title "Brainfuck64"
@@ -11,9 +27,12 @@ Do
 
     Cls
     ResetANSIEmulator
-    RunBrainfuckProgram LoadFile(programFile)
 
-    Title "Press any key to run another file...": Sleep 3600
+    startTick = GetTicks
+    RunBrainfuckProgram LoadFile(programFile)
+    deltaTick = GetTicks - startTick
+
+    Title "Run time =" + Str$(deltaTick / 1000) + "s. Press any key to run another file...": Sleep 3600
 Loop
 
 End
@@ -91,7 +110,6 @@ Sub RunBrainfuckProgram (programString As String)
                 Title "[WAITING FOR INPUT] " + windowTitle
 
                 memory(memoryPointer) = Asc(Input$(1))
-                Echo Chr$(memory(memoryPointer))
 
                 Title windowTitle ' set the window title the way it was
 
@@ -160,6 +178,25 @@ Function LoadFile$ (pathString As String)
         Close fh
     End If
 End Function
+
+
+' Loads a whole file from a URL into memory
+Function DownloadFile$ (url As String)
+    Dim h As Long, content As String, s As String
+
+    h = OpenClient("HTTP:" + url)
+
+    While Not EOF(h)
+        Limit 60
+        Get h, , s
+        content = content + s
+    Wend
+
+    Close h
+
+    DownloadFile = content
+End Function
+
 
 '$Include:'./ANSIPrint.bas'
 
