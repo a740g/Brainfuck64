@@ -3,45 +3,70 @@
 ' Copyright (c) 2023 Samuel Gomes
 '---------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-'$Include:'./ANSIPrint.bi'
+'---------------------------------------------------------------------------------------------------------------------------------------------------------------
+' HEADER FILES
+'---------------------------------------------------------------------------------------------------------------------------------------------------------------
+'$Include:'./Common.bi'
+'---------------------------------------------------------------------------------------------------------------------------------------------------------------
 
+'---------------------------------------------------------------------------------------------------------------------------------------------------------------
+' METACOMMANDS
+'---------------------------------------------------------------------------------------------------------------------------------------------------------------
+$Console:Only
 $Unstable:Http
+'---------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+'---------------------------------------------------------------------------------------------------------------------------------------------------------------
+' CONSTANTS
+'---------------------------------------------------------------------------------------------------------------------------------------------------------------
+Const APP_NAME = "Brainfuck64"
+Const INTERPRETER_MEMORY_DEFAULT = 30000
+Const UPDATES_PER_SECOND = 60
+'---------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 '---------------------------------------------------------------------------------------------------------------------------------------------------------------
 ' EXTERNAL LIBRARIES
 '---------------------------------------------------------------------------------------------------------------------------------------------------------------
 Declare CustomType Library
+    Function getchar&
+    Sub putchar (ByVal ch As Long)
     Function GetTicks~&&
 End Declare
 '---------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-Dim As Unsigned Integer64 startTick, deltaTick
-
-Screen NewImage(8 * 80, 16 * 30, 32)
+'---------------------------------------------------------------------------------------------------------------------------------------------------------------
+' PROGRAM ENTRY POINT
+'---------------------------------------------------------------------------------------------------------------------------------------------------------------
+Dim As Unsigned Integer64 startTick, deltaTicks
 
 Do
-    Title "Brainfuck64"
+    ConsoleTitle APP_NAME
 
     Dim As String programFile: programFile = OpenFileDialog$("Open", "", "*.bf|*.BF|*.Bf|*.bF", "Brainfuck Program Files")
     If Not FileExists(programFile) Then Exit Do
 
-    Cls
-    ResetANSIEmulator
+    putchar 13: putchar 10 ' start on a new line
 
     startTick = GetTicks
-    RunBrainfuckProgram LoadFile(programFile)
-    deltaTick = GetTicks - startTick
+    RunBrainfuckProgram LoadFile(programFile), GetFileNameFromPath(programFile)
+    deltaTicks = GetTicks - startTick
 
-    Title "Run time =" + Str$(deltaTick / 1000) + "s. Press any key to run another file...": Sleep 3600
+    ConsoleTitle "Run time =" + Str$(deltaTicks / 1000) + "s. Press any key to run another file...": Sleep 3600
 Loop
 
-End
+System
+'---------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-Sub RunBrainfuckProgram (programString As String)
-    ReDim As Unsigned Byte memory(0 To 29999)
+'---------------------------------------------------------------------------------------------------------------------------------------------------------------
+' FUNCTIONS AND SUBROUTINES
+'---------------------------------------------------------------------------------------------------------------------------------------------------------------
+Sub RunBrainfuckProgram (programString As String, programName As String)
+    ReDim As Unsigned Byte memory(0 To INTERPRETER_MEMORY_DEFAULT - 1)
     Dim As Unsigned Byte instruction
     Dim As Long instructionPointer, memoryPointer, programLength, bracketOpenCount, bracketCloseCount
-    Dim As String program, windowTitle
+    Dim As String program
+
+    ConsoleTitle programName ' set the window title
 
     ' Optimize program stream
     programLength = Len(programString)
@@ -64,7 +89,7 @@ Sub RunBrainfuckProgram (programString As String)
         End Select
     Next
 
-    If bracketOpenCount - bracketCloseCount <> 0 Then Error ERROR_SYNTAX_ERROR ' brackets are not matched
+    If bracketOpenCount <> bracketCloseCount Then Error ERROR_SYNTAX_ERROR ' brackets are not matched
 
     ' Re-initialize stuff based on the optimized stream
     instructionPointer = 1
@@ -84,13 +109,13 @@ Sub RunBrainfuckProgram (programString As String)
                         ReDim Preserve As Unsigned Byte memory(0 To memoryPointer) ' dynamically grow the memory space preserving contents
 
                     Case Is < 0 ' can happen if we move past the max value of long
-                        Error ERROR_OVERFLOW ' throw an error
+                        Error ERROR_CANNOT_CONTINUE ' throw an error
                 End Select
 
             Case KEY_LESS_THAN
                 memoryPointer = memoryPointer - 1 ' decrement the memory pointer
 
-                If memoryPointer < 0 Then Error ERROR_MEMORY_REGION_OUT_OF_RANGE ' cannot go to negative address space
+                If memoryPointer < 0 Then Error ERROR_CANNOT_CONTINUE ' cannot go to negative address space
 
             Case KEY_PLUS
                 memory(memoryPointer) = memory(memoryPointer) + 1
@@ -99,19 +124,15 @@ Sub RunBrainfuckProgram (programString As String)
                 memory(memoryPointer) = memory(memoryPointer) - 1
 
             Case KEY_DOT
-                If Not PrintANSICharacter(memory(memoryPointer)) Then
-                    Print
-                    ResetANSIEmulator
-                End If
+                putchar memory(memoryPointer)
 
             Case KEY_COMMA
                 ' Get the current window title and then tell the user that we need keyboard input
-                windowTitle = Title$
-                Title "[WAITING FOR INPUT] " + windowTitle
+                ConsoleTitle "[WAITING FOR INPUT] " + programName
 
-                memory(memoryPointer) = Asc(Input$(1))
+                memory(memoryPointer) = getchar
 
-                Title windowTitle ' set the window title the way it was
+                ConsoleTitle programName ' set the window title the way it was
 
             Case KEY_OPEN_BRACKET
                 If memory(memoryPointer) = 0 Then
@@ -169,6 +190,24 @@ Sub RunBrainfuckProgram (programString As String)
 End Sub
 
 
+' Gets the filename portion from a file path
+Function GetFileNameFromPath$ (pathName As String)
+    Dim i As Unsigned Long
+
+    ' Retrieve the position of the first / or \ in the parameter from the
+    For i = Len(pathName) To 1 Step -1
+        If Asc(pathName, i) = KEY_SLASH Or Asc(pathName, i) = KEY_BACKSLASH Then Exit For
+    Next
+
+    ' Return the full string if pathsep was not found
+    If i = 0 Then
+        GetFileNameFromPath = pathName
+    Else
+        GetFileNameFromPath = Right$(pathName, Len(pathName) - i)
+    End If
+End Function
+
+
 ' Loads a whole file in memory
 Function LoadFile$ (pathString As String)
     If FileExists(pathString) Then
@@ -187,7 +226,7 @@ Function DownloadFile$ (url As String)
     h = OpenClient("HTTP:" + url)
 
     While Not EOF(h)
-        Limit 60
+        Limit UPDATES_PER_SECOND
         Get h, , s
         content = content + s
     Wend
@@ -196,7 +235,5 @@ Function DownloadFile$ (url As String)
 
     DownloadFile = content
 End Function
-
-
-'$Include:'./ANSIPrint.bas'
+'---------------------------------------------------------------------------------------------------------------------------------------------------------------
 
