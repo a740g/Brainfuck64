@@ -42,7 +42,7 @@ Dim As Unsigned Integer64 startTick, deltaTicks
 Do
     ConsoleTitle APP_NAME
 
-    Dim As String programFile: programFile = OpenFileDialog$("Open", "", "*.bf|*.BF|*.Bf|*.bF", "Brainfuck Program Files")
+    Dim As String programFile: programFile = OpenFileDialog$("Open", "", "*.bf|*.BF|*.Bf|*.bF", "Brainfuck Source Files")
     If Not FileExists(programFile) Then Exit Do
 
     putchar 13: putchar 10 ' start on a new line
@@ -208,32 +208,47 @@ Function GetFileNameFromPath$ (pathName As String)
 End Function
 
 
-' Loads a whole file in memory
-Function LoadFile$ (pathString As String)
-    If FileExists(pathString) Then
+' Load a file from a file or URL
+Function LoadFile$ (PathOrURL As String)
+    If "HTTP" = UCase$(Left$(PathOrURL, 4)) Or "FTP" = UCase$(Left$(PathOrURL, 3)) Then
+        LoadFile = LoadFileFromURL(PathOrURL)
+    Else
+        LoadFile = LoadFileFromDisk(PathOrURL)
+    End If
+End Function
+
+
+' Loads a whole file from disk into memory
+Function LoadFileFromDisk$ (path As String)
+    If FileExists(path) Then
         Dim As Long fh: fh = FreeFile
-        Open pathString For Binary Access Read As fh
-        LoadFile$ = Input$(LOF(fh), fh)
+
+        Open path For Binary Access Read As fh
+
+        LoadFileFromDisk = Input$(LOF(fh), fh)
+
         Close fh
     End If
 End Function
 
 
 ' Loads a whole file from a URL into memory
-Function DownloadFile$ (url As String)
-    Dim h As Long, content As String, s As String
+Function LoadFileFromURL$ (url As String)
+    Dim h As Long: h = OpenClient("HTTP:" + url)
 
-    h = OpenClient("HTTP:" + url)
+    If h <> NULL Then
+        Dim As String content, buffer
 
-    While Not EOF(h)
-        Limit UPDATES_PER_SECOND
-        Get h, , s
-        content = content + s
-    Wend
+        While Not EOF(h)
+            Limit UPDATES_PER_SECOND
+            Get h, , buffer
+            content = content + buffer
+        Wend
 
-    Close h
+        Close h
 
-    DownloadFile = content
+        LoadFileFromURL = content
+    End If
 End Function
 '---------------------------------------------------------------------------------------------------------------------------------------------------------------
 
