@@ -48,7 +48,7 @@ Do
     putchar 13: putchar 10 ' start on a new line
 
     startTick = GetTicks
-    RunBrainfuckProgram LoadFile(programFile), GetFileNameFromPath(programFile)
+    RunBrainfuckProgram LoadFile(programFile), GetFileNameFromPathOrURL(programFile)
     deltaTicks = GetTicks - startTick
 
     ConsoleTitle "Run time =" + Str$(deltaTicks / 1000) + "s. Press any key to run another file...": Sleep 3600
@@ -191,30 +191,54 @@ End Sub
 
 
 ' Gets the filename portion from a file path
-Function GetFileNameFromPath$ (pathName As String)
-    Dim i As Unsigned Long
+Function GetFileNameFromPathOrURL$ (PathOrURL As String)
+    Dim As Unsigned Long i, j: j = Len(PathOrURL)
 
     ' Retrieve the position of the first / or \ in the parameter from the
-    For i = Len(pathName) To 1 Step -1
-        If Asc(pathName, i) = KEY_SLASH Or Asc(pathName, i) = KEY_BACKSLASH Then Exit For
+    For i = j To 1 Step -1
+        Select Case Asc(PathOrURL, i)
+            Case KEY_SLASH, KEY_BACKSLASH
+                Exit For
+        End Select
     Next
 
     ' Return the full string if pathsep was not found
-    If i = 0 Then
-        GetFileNameFromPath = pathName
+    If i = NULL Then
+        GetFileNameFromPathOrURL = PathOrURL
     Else
-        GetFileNameFromPath = Right$(pathName, Len(pathName) - i)
+        GetFileNameFromPathOrURL = Right$(PathOrURL, j - i)
+    End If
+End Function
+
+
+Function GetExtensionFromPathOrURL$ (PathOrURL As String)
+    Dim fileName As String: fileName = GetFileNameFromPathOrURL(PathOrURL)
+    Dim i As Unsigned Long: i = InStrRev(fileName, Chr$(KEY_DOT))
+
+    If i <> NULL Then
+        GetExtensionFromPathOrURL = Right$(fileName, Len(fileName) - i)
+    End If
+End Function
+
+
+Function GetDriveOrSchemeFromPathOrURL$ (PathOrURL As String)
+    Dim i As Unsigned Long: i = InStr(PathOrURL, Chr$(KEY_COLON))
+
+    If i <> NULL Then
+        GetDriveOrSchemeFromPathOrURL = Left$(PathOrURL, i - 1)
     End If
 End Function
 
 
 ' Load a file from a file or URL
 Function LoadFile$ (PathOrURL As String)
-    If "HTTP" = UCase$(Left$(PathOrURL, 4)) Or "FTP" = UCase$(Left$(PathOrURL, 3)) Then
-        LoadFile = LoadFileFromURL(PathOrURL)
-    Else
-        LoadFile = LoadFileFromDisk(PathOrURL)
-    End If
+    Select Case UCase$(GetDriveOrSchemeFromPathOrURL(PathOrURL))
+        Case "HTTP", "HTTPS", "FTP"
+            LoadFile = LoadFileFromURL(PathOrURL)
+
+        Case Else
+            LoadFile = LoadFileFromDisk(PathOrURL)
+    End Select
 End Function
 
 
