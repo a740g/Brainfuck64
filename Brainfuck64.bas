@@ -211,21 +211,24 @@ Function GetFileNameFromPathOrURL$ (PathOrURL As String)
 End Function
 
 
-Function GetExtensionFromPathOrURL$ (PathOrURL As String)
+' Get the file extension from a path name (ex. .doc, .so etc.)
+' Note this will return anything after a dot if the URL/path is just a directory name
+Function GetFileExtensionFromPathOrURL$ (PathOrURL As String)
     Dim fileName As String: fileName = GetFileNameFromPathOrURL(PathOrURL)
     Dim i As Unsigned Long: i = InStrRev(fileName, Chr$(KEY_DOT))
 
     If i <> NULL Then
-        GetExtensionFromPathOrURL = Right$(fileName, Len(fileName) - i)
+        GetFileExtensionFromPathOrURL = Right$(fileName, Len(fileName) - i + 1)
     End If
 End Function
 
 
+' Gets the drive or scheme from a path name (ex. C:, HTTPS: etc.)
 Function GetDriveOrSchemeFromPathOrURL$ (PathOrURL As String)
     Dim i As Unsigned Long: i = InStr(PathOrURL, Chr$(KEY_COLON))
 
     If i <> NULL Then
-        GetDriveOrSchemeFromPathOrURL = Left$(PathOrURL, i - 1)
+        GetDriveOrSchemeFromPathOrURL = Left$(PathOrURL, i)
     End If
 End Function
 
@@ -233,7 +236,7 @@ End Function
 ' Load a file from a file or URL
 Function LoadFile$ (PathOrURL As String)
     Select Case UCase$(GetDriveOrSchemeFromPathOrURL(PathOrURL))
-        Case "HTTP", "HTTPS", "FTP"
+        Case "HTTP:", "HTTPS:", "FTP:"
             LoadFile = LoadFileFromURL(PathOrURL)
 
         Case Else
