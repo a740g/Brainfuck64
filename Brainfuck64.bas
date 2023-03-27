@@ -63,42 +63,72 @@ System
 Sub RunBrainfuckProgram (programString As String, programName As String)
     ReDim As Unsigned Byte memory(0 To INTERPRETER_MEMORY_DEFAULT - 1)
     Dim As Unsigned Byte instruction
-    Dim As Long instructionPointer, memoryPointer, programLength, bracketOpenCount, bracketCloseCount
+    Dim As Long instructionPointer, memoryPointer, programLength, bracketOpenCount
+    ReDim As Long bracketPosition(0 To 0) ' matching bracket positions
+    ReDim As Long stack(0 To 0)
     Dim As String program
 
-    ConsoleTitle programName ' set the window title
-
     ' Optimize program stream
+    ConsoleTitle "Optimizing..."
+
     programLength = Len(programString)
+    program = Space$(programLength) ' allocate memory assuming we'll use the entire lenght of programString
+
     For instructionPointer = 1 To programLength
         instruction = Asc(programString, instructionPointer)
 
         ' Only accept supported commands and discard the rest
         Select Case instruction
-            Case KEY_GREATER_THAN, KEY_LESS_THAN, KEY_PLUS, KEY_MINUS, KEY_DOT, KEY_COMMA ' regular commands
-                program = program + Chr$(instruction)
-
-            Case KEY_OPEN_BRACKET ' basic loop check
-                bracketOpenCount = bracketOpenCount + 1
-                program = program + Chr$(instruction)
-
-            Case KEY_CLOSE_BRACKET ' basic loop check
-                bracketCloseCount = bracketCloseCount + 1
-                program = program + Chr$(instruction)
-
+            Case KEY_GREATER_THAN, KEY_LESS_THAN, KEY_PLUS, KEY_MINUS, KEY_DOT, KEY_COMMA, KEY_OPEN_BRACKET, KEY_CLOSE_BRACKET ' regular commands
+                memoryPointer = memoryPointer + 1
+                Asc(program, memoryPointer) = instruction
         End Select
     Next
 
-    If bracketOpenCount <> bracketCloseCount Then Error ERROR_SYNTAX_ERROR ' brackets are not matched
+    program = Left$(program, memoryPointer) ' compact the program stream
+
+    ' Build jump table
+    ConsoleTitle "Building jump table..."
+
+    programLength = Len(program)
+    For instructionPointer = 0 To programLength - 1
+        instruction = Asc(program, instructionPointer + 1)
+
+        Select Case instruction
+            Case KEY_OPEN_BRACKET
+                stack(bracketOpenCount) = instructionPointer
+
+                bracketOpenCount = bracketOpenCount + 1
+                If bracketOpenCount > UBound(stack) Then ' we moved past the stack upper bound
+                    ReDim Preserve As Long stack(0 To bracketOpenCount) ' dynamically grow the stack space preserving contents
+                End If
+
+            Case KEY_CLOSE_BRACKET
+                If bracketOpenCount < 1 Then Error ERROR_SYNTAX_ERROR ' brackets are not matched
+
+                If instructionPointer > UBound(bracketPosition) Then
+                    ReDim Preserve As Long bracketPosition(0 To instructionPointer)
+                End If
+
+                bracketPosition(instructionPointer) = stack(bracketOpenCount - 1)
+                bracketPosition(stack(bracketOpenCount - 1)) = instructionPointer
+
+                bracketOpenCount = bracketOpenCount - 1
+        End Select
+    Next
+
+    If bracketOpenCount > 0 Then Error ERROR_SYNTAX_ERROR ' brackets are not matched
+
+    ' Execute the program
+    ConsoleTitle programName ' set the window title
 
     ' Re-initialize stuff based on the optimized stream
-    instructionPointer = 1
-    bracketOpenCount = 0
-    bracketCloseCount = 0
+    instructionPointer = 0
+    memoryPointer = 0
     programLength = Len(program)
 
-    Do Until instructionPointer > programLength
-        instruction = Asc(program, instructionPointer)
+    Do While instructionPointer < programLength
+        instruction = Asc(program, instructionPointer + 1)
 
         Select Case instruction
             Case KEY_GREATER_THAN
@@ -135,53 +165,10 @@ Sub RunBrainfuckProgram (programString As String, programName As String)
                 ConsoleTitle programName ' set the window title the way it was
 
             Case KEY_OPEN_BRACKET
-                If memory(memoryPointer) = 0 Then
-                    bracketOpenCount = 0 ' reset bracket count
-                    instructionPointer = instructionPointer + 1 ' move past this bracket
-
-                    Do Until instructionPointer > programLength
-                        instruction = Asc(program, instructionPointer)
-
-                        Select Case instruction
-                            Case KEY_OPEN_BRACKET ' we found a nested bracket
-                                bracketOpenCount = bracketOpenCount + 1 ' increment bracket counter
-
-                            Case KEY_CLOSE_BRACKET
-                                If bracketOpenCount = 0 Then ' we found the matching bracket
-                                    Exit Do
-                                Else
-                                    bracketOpenCount = bracketOpenCount - 1 ' decrement bracket counter
-                                End If
-
-                        End Select
-
-                        instructionPointer = instructionPointer + 1
-                    Loop
-                End If
+                If memory(memoryPointer) = 0 Then instructionPointer = bracketPosition(instructionPointer)
 
             Case KEY_CLOSE_BRACKET
-                If memory(memoryPointer) <> 0 Then
-                    bracketCloseCount = 0
-                    instructionPointer = instructionPointer - 1
-
-                    Do While instructionPointer > 0
-                        instruction = Asc(program, instructionPointer)
-
-                        Select Case instruction
-                            Case KEY_CLOSE_BRACKET
-                                bracketCloseCount = bracketCloseCount + 1
-
-                            Case KEY_OPEN_BRACKET
-                                If bracketCloseCount = 0 Then ' we found the matching bracket
-                                    Exit Do
-                                Else
-                                    bracketCloseCount = bracketCloseCount - 1
-                                End If
-                        End Select
-
-                        instructionPointer = instructionPointer - 1
-                    Loop
-                End If
+                If memory(memoryPointer) <> 0 Then instructionPointer = bracketPosition(instructionPointer)
 
         End Select
 
