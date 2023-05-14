@@ -1,65 +1,77 @@
-'---------------------------------------------------------------------------------------------------------------------------------------------------------------
+'-----------------------------------------------------------------------------------------------------------------------
 ' QB64-PE Brainfuck interpreter
 ' Copyright (c) 2023 Samuel Gomes
-'---------------------------------------------------------------------------------------------------------------------------------------------------------------
+'-----------------------------------------------------------------------------------------------------------------------
 
-'---------------------------------------------------------------------------------------------------------------------------------------------------------------
+'-----------------------------------------------------------------------------------------------------------------------
 ' HEADER FILES
-'---------------------------------------------------------------------------------------------------------------------------------------------------------------
-'$Include:'./Common.bi'
-'---------------------------------------------------------------------------------------------------------------------------------------------------------------
+'-----------------------------------------------------------------------------------------------------------------------
+'$Include:'include/CRTLib.bi'
+'$Include:'include/FileOps.bi'
+'-----------------------------------------------------------------------------------------------------------------------
 
-'---------------------------------------------------------------------------------------------------------------------------------------------------------------
+'-----------------------------------------------------------------------------------------------------------------------
 ' METACOMMANDS
-'---------------------------------------------------------------------------------------------------------------------------------------------------------------
+'-----------------------------------------------------------------------------------------------------------------------
 $Console:Only
-$Unstable:Http
-'---------------------------------------------------------------------------------------------------------------------------------------------------------------
+$ExeIcon:'./Brainfuck64.ico'
+$VersionInfo:ProductName=Brainfuck64
+$VersionInfo:CompanyName=Samuel Gomes
+$VersionInfo:LegalCopyright=Copyright (c) 2023 Samuel Gomes
+$VersionInfo:LegalTrademarks=All trademarks are property of their respective owners
+$VersionInfo:Web=https://github.com/a740g
+$VersionInfo:Comments=https://github.com/a740g
+$VersionInfo:InternalName=Brainfuck64
+$VersionInfo:OriginalFilename=Brainfuck64.exe
+$VersionInfo:FileDescription=Brainfuck64 executable
+$VersionInfo:FILEVERSION#=1,0,0,0
+$VersionInfo:PRODUCTVERSION#=1,0,0,0
+'-----------------------------------------------------------------------------------------------------------------------
 
-'---------------------------------------------------------------------------------------------------------------------------------------------------------------
+'-----------------------------------------------------------------------------------------------------------------------
 ' CONSTANTS
-'---------------------------------------------------------------------------------------------------------------------------------------------------------------
+'-----------------------------------------------------------------------------------------------------------------------
 Const APP_NAME = "Brainfuck64"
 Const INTERPRETER_MEMORY_DEFAULT = 30000
-Const UPDATES_PER_SECOND = 60
-'---------------------------------------------------------------------------------------------------------------------------------------------------------------
+'-----------------------------------------------------------------------------------------------------------------------
 
-'---------------------------------------------------------------------------------------------------------------------------------------------------------------
-' EXTERNAL LIBRARIES
-'---------------------------------------------------------------------------------------------------------------------------------------------------------------
-Declare CustomType Library
-    Function getchar&
-    Sub putchar (ByVal ch As Long)
-    Function GetTicks~&&
-End Declare
-'---------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-'---------------------------------------------------------------------------------------------------------------------------------------------------------------
+'-----------------------------------------------------------------------------------------------------------------------
 ' PROGRAM ENTRY POINT
-'---------------------------------------------------------------------------------------------------------------------------------------------------------------
-Dim As Unsigned Integer64 startTick, deltaTicks
+'-----------------------------------------------------------------------------------------------------------------------
+' Change to the directory specified by the environment
+ChDir StartDir$
 
-Do
-    ConsoleTitle APP_NAME
+' If there are no command line parameters just show some info and exit
+If CommandCount < 1 Or GetProgramArgumentIndex(KEY_QUESTION_MARK) > 0 Then
+    Print
+    Print "Brainfuck64: A Brainfuck interpreter written in QB64-PE"
+    Print "Copyright (c) 2023 Samuel Gomes"
+    Print
+    Print "https://github.com/a740g"
+    Print
+    Print "Usage: Brainfuck64 [program1.bf] [program2.bf] ..."
+    Print
+    Print "Note:"
+    Print " * Wildcards (*, ?) are supported"
+    Print " * URLs are supported"
+    Print " * On Windows, use Terminal for best results"
+    Print
+    System
+End If
 
-    Dim As String programFile: programFile = OpenFileDialog$("Open", "", "*.bf|*.BF|*.Bf|*.bF", "Brainfuck Source Files")
-    If Not FileExists(programFile) Then Exit Do
+Dim i As Unsigned Long
 
-    putchar 13: putchar 10 ' start on a new line
-
-    startTick = GetTicks
-    RunBrainfuckProgram LoadFile(programFile), GetFileNameFromPathOrURL(programFile)
-    deltaTicks = GetTicks - startTick
-
-    ConsoleTitle "Run time =" + Str$(deltaTicks / 1000) + "s. Press any key to run another file...": Sleep 3600
-Loop
+For i = 1 To CommandCount
+    RunBrainfuckProgram LoadFile(Command$(i)), GetFileNameFromPathOrURL(Command$(i))
+    If i < CommandCount Then Print ' move to a new line if we are running more than one program
+Next
 
 System
-'---------------------------------------------------------------------------------------------------------------------------------------------------------------
+'-----------------------------------------------------------------------------------------------------------------------
 
-'---------------------------------------------------------------------------------------------------------------------------------------------------------------
+'-----------------------------------------------------------------------------------------------------------------------
 ' FUNCTIONS AND SUBROUTINES
-'---------------------------------------------------------------------------------------------------------------------------------------------------------------
+'-----------------------------------------------------------------------------------------------------------------------
 Sub RunBrainfuckProgram (programString As String, programName As String)
     ReDim As Unsigned Byte memory(0 To INTERPRETER_MEMORY_DEFAULT - 1)
     Dim As Unsigned Byte instruction
@@ -72,16 +84,16 @@ Sub RunBrainfuckProgram (programString As String, programName As String)
     ConsoleTitle "Optimizing..."
 
     programLength = Len(programString)
-    program = Space$(programLength) ' allocate memory assuming we'll use the entire lenght of programString
+    program = Space$(programLength) ' allocate memory assuming we'll use the entire length of programString
 
-    For instructionPointer = 1 To programLength
-        instruction = Asc(programString, instructionPointer)
+    For instructionPointer = 0 To programLength - 1
+        instruction = PeekString(programString, instructionPointer)
 
         ' Only accept supported commands and discard the rest
         Select Case instruction
             Case KEY_GREATER_THAN, KEY_LESS_THAN, KEY_PLUS, KEY_MINUS, KEY_DOT, KEY_COMMA, KEY_OPEN_BRACKET, KEY_CLOSE_BRACKET ' regular commands
+                PokeString program, memoryPointer, instruction
                 memoryPointer = memoryPointer + 1
-                Asc(program, memoryPointer) = instruction
         End Select
     Next
 
@@ -92,7 +104,7 @@ Sub RunBrainfuckProgram (programString As String, programName As String)
 
     programLength = Len(program)
     For instructionPointer = 0 To programLength - 1
-        instruction = Asc(program, instructionPointer + 1)
+        instruction = PeekString(program, instructionPointer)
 
         Select Case instruction
             Case KEY_OPEN_BRACKET
@@ -128,7 +140,7 @@ Sub RunBrainfuckProgram (programString As String, programName As String)
     programLength = Len(program)
 
     Do While instructionPointer < programLength
-        instruction = Asc(program, instructionPointer + 1)
+        instruction = PeekString(program, instructionPointer)
 
         Select Case instruction
             Case KEY_GREATER_THAN
@@ -154,13 +166,13 @@ Sub RunBrainfuckProgram (programString As String, programName As String)
                 memory(memoryPointer) = memory(memoryPointer) - 1
 
             Case KEY_DOT
-                putchar memory(memoryPointer)
+                PutChar memory(memoryPointer)
 
             Case KEY_COMMA
                 ' Get the current window title and then tell the user that we need keyboard input
                 ConsoleTitle "[WAITING FOR INPUT] " + programName
 
-                memory(memoryPointer) = getchar
+                memory(memoryPointer) = GetChar
 
                 ConsoleTitle programName ' set the window title the way it was
 
@@ -175,94 +187,13 @@ Sub RunBrainfuckProgram (programString As String, programName As String)
         instructionPointer = instructionPointer + 1
     Loop
 End Sub
+'-----------------------------------------------------------------------------------------------------------------------
 
-
-' Gets the filename portion from a file path
-Function GetFileNameFromPathOrURL$ (PathOrURL As String)
-    Dim As Unsigned Long i, j: j = Len(PathOrURL)
-
-    ' Retrieve the position of the first / or \ in the parameter from the
-    For i = j To 1 Step -1
-        Select Case Asc(PathOrURL, i)
-            Case KEY_SLASH, KEY_BACKSLASH
-                Exit For
-        End Select
-    Next
-
-    ' Return the full string if pathsep was not found
-    If i = NULL Then
-        GetFileNameFromPathOrURL = PathOrURL
-    Else
-        GetFileNameFromPathOrURL = Right$(PathOrURL, j - i)
-    End If
-End Function
-
-
-' Get the file extension from a path name (ex. .doc, .so etc.)
-' Note this will return anything after a dot if the URL/path is just a directory name
-Function GetFileExtensionFromPathOrURL$ (PathOrURL As String)
-    Dim fileName As String: fileName = GetFileNameFromPathOrURL(PathOrURL)
-    Dim i As Unsigned Long: i = InStrRev(fileName, Chr$(KEY_DOT))
-
-    If i <> NULL Then
-        GetFileExtensionFromPathOrURL = Right$(fileName, Len(fileName) - i + 1)
-    End If
-End Function
-
-
-' Gets the drive or scheme from a path name (ex. C:, HTTPS: etc.)
-Function GetDriveOrSchemeFromPathOrURL$ (PathOrURL As String)
-    Dim i As Unsigned Long: i = InStr(PathOrURL, Chr$(KEY_COLON))
-
-    If i <> NULL Then
-        GetDriveOrSchemeFromPathOrURL = Left$(PathOrURL, i)
-    End If
-End Function
-
-
-' Load a file from a file or URL
-Function LoadFile$ (PathOrURL As String)
-    Select Case UCase$(GetDriveOrSchemeFromPathOrURL(PathOrURL))
-        Case "HTTP:", "HTTPS:", "FTP:"
-            LoadFile = LoadFileFromURL(PathOrURL)
-
-        Case Else
-            LoadFile = LoadFileFromDisk(PathOrURL)
-    End Select
-End Function
-
-
-' Loads a whole file from disk into memory
-Function LoadFileFromDisk$ (path As String)
-    If FileExists(path) Then
-        Dim As Long fh: fh = FreeFile
-
-        Open path For Binary Access Read As fh
-
-        LoadFileFromDisk = Input$(LOF(fh), fh)
-
-        Close fh
-    End If
-End Function
-
-
-' Loads a whole file from a URL into memory
-Function LoadFileFromURL$ (url As String)
-    Dim h As Long: h = OpenClient("HTTP:" + url)
-
-    If h <> NULL Then
-        Dim As String content, buffer
-
-        While Not EOF(h)
-            Limit UPDATES_PER_SECOND
-            Get h, , buffer
-            content = content + buffer
-        Wend
-
-        Close h
-
-        LoadFileFromURL = content
-    End If
-End Function
-'---------------------------------------------------------------------------------------------------------------------------------------------------------------
+'-----------------------------------------------------------------------------------------------------------------------
+' MODULE FILES
+'-----------------------------------------------------------------------------------------------------------------------
+'$Include:'include/ProgramArgs.bas'
+'$Include:'include/FileOps.bas'
+'-----------------------------------------------------------------------------------------------------------------------
+'-----------------------------------------------------------------------------------------------------------------------
 
