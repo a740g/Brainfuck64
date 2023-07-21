@@ -6,194 +6,195 @@
 '-----------------------------------------------------------------------------------------------------------------------
 ' HEADER FILES
 '-----------------------------------------------------------------------------------------------------------------------
-'$Include:'include/CRTLib.bi'
-'$Include:'include/FileOps.bi'
+'$INCLUDE:'include/StdIO.bi'
+'$INCLUDE:'include/PointerOps.bi'
+'$INCLUDE:'include/FileOps.bi'
 '-----------------------------------------------------------------------------------------------------------------------
 
 '-----------------------------------------------------------------------------------------------------------------------
 ' METACOMMANDS
 '-----------------------------------------------------------------------------------------------------------------------
-$NoPrefix
-$Console:Only
-$ExeIcon:'./Brainfuck64.ico'
-$VersionInfo:ProductName=Brainfuck64
-$VersionInfo:CompanyName=Samuel Gomes
-$VersionInfo:LegalCopyright=Copyright (c) 2023 Samuel Gomes
-$VersionInfo:LegalTrademarks=All trademarks are property of their respective owners
-$VersionInfo:Web=https://github.com/a740g
-$VersionInfo:Comments=https://github.com/a740g
-$VersionInfo:InternalName=Brainfuck64
-$VersionInfo:OriginalFilename=Brainfuck64.exe
-$VersionInfo:FileDescription=Brainfuck64 executable
-$VersionInfo:FILEVERSION#=1,0,0,0
-$VersionInfo:PRODUCTVERSION#=1,0,0,0
+$NOPREFIX
+$CONSOLE:ONLY
+$EXEICON:'./Brainfuck64.ico'
+$VERSIONINFO:ProductName=Brainfuck64
+$VERSIONINFO:CompanyName=Samuel Gomes
+$VERSIONINFO:LegalCopyright=Copyright (c) 2023 Samuel Gomes
+$VERSIONINFO:LegalTrademarks=All trademarks are property of their respective owners
+$VERSIONINFO:Web=https://github.com/a740g
+$VERSIONINFO:Comments=https://github.com/a740g
+$VERSIONINFO:InternalName=Brainfuck64
+$VERSIONINFO:OriginalFilename=Brainfuck64.exe
+$VERSIONINFO:FileDescription=Brainfuck64 executable
+$VERSIONINFO:FILEVERSION#=1,0,0,0
+$VERSIONINFO:PRODUCTVERSION#=1,0,0,0
 '-----------------------------------------------------------------------------------------------------------------------
 
 '-----------------------------------------------------------------------------------------------------------------------
 ' CONSTANTS
 '-----------------------------------------------------------------------------------------------------------------------
-Const APP_NAME = "Brainfuck64"
-Const INTERPRETER_MEMORY_DEFAULT = 30000
+CONST APP_NAME = "Brainfuck64"
+CONST INTERPRETER_MEMORY_DEFAULT = 30000
 '-----------------------------------------------------------------------------------------------------------------------
 
 '-----------------------------------------------------------------------------------------------------------------------
 ' PROGRAM ENTRY POINT
 '-----------------------------------------------------------------------------------------------------------------------
 ' Change to the directory specified by the environment
-ChDir StartDir$
+CHDIR STARTDIR$
 
 ' If there are no command line parameters just show some info and exit
-If CommandCount < 1 Or GetProgramArgumentIndex(KEY_QUESTION_MARK) > 0 Then
-    Print
-    Print "Brainfuck64: A Brainfuck interpreter written in QB64-PE"
-    Print "Copyright (c) 2023 Samuel Gomes"
-    Print
-    Print "https://github.com/a740g"
-    Print
-    Print "Usage: Brainfuck64 [program1.bf] [program2.bf] ..."
-    Print
-    Print "Note:"
-    Print " * Wildcards (*, ?) are supported"
-    Print " * URLs are supported"
-    Print " * On Windows, use Terminal for best results"
-    Print
-    System
-End If
+IF COMMANDCOUNT < 1 OR GetProgramArgumentIndex(KEY_QUESTION_MARK) > 0 THEN
+    PRINT
+    PRINT "Brainfuck64: A Brainfuck interpreter written in QB64-PE"
+    PRINT "Copyright (c) 2023 Samuel Gomes"
+    PRINT
+    PRINT "https://github.com/a740g"
+    PRINT
+    PRINT "Usage: Brainfuck64 [program1.bf] [program2.bf] ..."
+    PRINT
+    PRINT "Note:"
+    PRINT " * Wildcards (*, ?) are supported"
+    PRINT " * URLs are supported"
+    PRINT " * On Windows, use Terminal for best results"
+    PRINT
+    SYSTEM
+END IF
 
-Dim i As Unsigned Long
+DIM i AS UNSIGNED LONG
 
-For i = 1 To CommandCount
-    RunBrainfuckProgram LoadFile(Command$(i)), GetFileNameFromPathOrURL(Command$(i))
-    If i < CommandCount Then Print ' move to a new line if we are running more than one program
-Next
+FOR i = 1 TO COMMANDCOUNT
+    RunBrainfuckProgram LoadFile(COMMAND$(i)), GetFileNameFromPathOrURL(COMMAND$(i))
+    IF i < COMMANDCOUNT THEN PRINT ' move to a new line if we are running more than one program
+NEXT
 
-System
+SYSTEM
 '-----------------------------------------------------------------------------------------------------------------------
 
 '-----------------------------------------------------------------------------------------------------------------------
 ' FUNCTIONS AND SUBROUTINES
 '-----------------------------------------------------------------------------------------------------------------------
-Sub RunBrainfuckProgram (programString As String, programName As String)
-    ReDim As Unsigned Byte memory(0 To INTERPRETER_MEMORY_DEFAULT - 1)
-    Dim As Unsigned Byte instruction
-    Dim As Long instructionPointer, memoryPointer, programLength, bracketOpenCount
-    ReDim As Long bracketPosition(0 To 0) ' matching bracket positions
-    ReDim As Long stack(0 To 0)
-    Dim As String program
+SUB RunBrainfuckProgram (programString AS STRING, programName AS STRING)
+    REDIM AS UNSIGNED BYTE memory(0 TO INTERPRETER_MEMORY_DEFAULT - 1)
+    DIM AS UNSIGNED BYTE instruction
+    DIM AS LONG instructionPointer, memoryPointer, programLength, bracketOpenCount
+    REDIM AS LONG bracketPosition(0 TO 0) ' matching bracket positions
+    REDIM AS LONG stack(0 TO 0)
+    DIM AS STRING program
 
     ' Optimize program stream
-    ConsoleTitle "Optimizing..."
+    CONSOLETITLE "Optimizing..."
 
-    programLength = Len(programString)
-    program = Space$(programLength) ' allocate memory assuming we'll use the entire length of programString
+    programLength = LEN(programString)
+    program = SPACE$(programLength) ' allocate memory assuming we'll use the entire length of programString
 
-    For instructionPointer = 0 To programLength - 1
-        instruction = PeekString(programString, instructionPointer)
+    FOR instructionPointer = 0 TO programLength - 1
+        instruction = PeekStringByte(programString, instructionPointer)
 
         ' Only accept supported commands and discard the rest
-        Select Case instruction
-            Case KEY_GREATER_THAN, KEY_LESS_THAN, KEY_PLUS, KEY_MINUS, KEY_DOT, KEY_COMMA, KEY_OPEN_BRACKET, KEY_CLOSE_BRACKET ' regular commands
-                PokeString program, memoryPointer, instruction
+        SELECT CASE instruction
+            CASE KEY_GREATER_THAN, KEY_LESS_THAN, KEY_PLUS, KEY_MINUS, KEY_DOT, KEY_COMMA, KEY_OPEN_BRACKET, KEY_CLOSE_BRACKET ' regular commands
+                PokeStringByte program, memoryPointer, instruction
                 memoryPointer = memoryPointer + 1
-        End Select
-    Next
+        END SELECT
+    NEXT
 
-    program = Left$(program, memoryPointer) ' compact the program stream
+    program = LEFT$(program, memoryPointer) ' compact the program stream
 
     ' Build jump table
-    ConsoleTitle "Building jump table..."
+    CONSOLETITLE "Building jump table..."
 
-    programLength = Len(program)
-    For instructionPointer = 0 To programLength - 1
-        instruction = PeekString(program, instructionPointer)
+    programLength = LEN(program)
+    FOR instructionPointer = 0 TO programLength - 1
+        instruction = PeekStringByte(program, instructionPointer)
 
-        Select Case instruction
-            Case KEY_OPEN_BRACKET
+        SELECT CASE instruction
+            CASE KEY_OPEN_BRACKET
                 stack(bracketOpenCount) = instructionPointer
 
                 bracketOpenCount = bracketOpenCount + 1
-                If bracketOpenCount > UBound(stack) Then ' we moved past the stack upper bound
-                    ReDim Preserve As Long stack(0 To bracketOpenCount) ' dynamically grow the stack space preserving contents
-                End If
+                IF bracketOpenCount > UBOUND(stack) THEN ' we moved past the stack upper bound
+                    REDIM PRESERVE AS LONG stack(0 TO bracketOpenCount) ' dynamically grow the stack space preserving contents
+                END IF
 
-            Case KEY_CLOSE_BRACKET
-                If bracketOpenCount < 1 Then Error ERROR_SYNTAX_ERROR ' brackets are not matched
+            CASE KEY_CLOSE_BRACKET
+                IF bracketOpenCount < 1 THEN ERROR ERROR_SYNTAX_ERROR ' brackets are not matched
 
-                If instructionPointer > UBound(bracketPosition) Then
-                    ReDim Preserve As Long bracketPosition(0 To instructionPointer)
-                End If
+                IF instructionPointer > UBOUND(bracketPosition) THEN
+                    REDIM PRESERVE AS LONG bracketPosition(0 TO instructionPointer)
+                END IF
 
                 bracketPosition(instructionPointer) = stack(bracketOpenCount - 1)
                 bracketPosition(stack(bracketOpenCount - 1)) = instructionPointer
 
                 bracketOpenCount = bracketOpenCount - 1
-        End Select
-    Next
+        END SELECT
+    NEXT
 
-    If bracketOpenCount > 0 Then Error ERROR_SYNTAX_ERROR ' brackets are not matched
+    IF bracketOpenCount > 0 THEN ERROR ERROR_SYNTAX_ERROR ' brackets are not matched
 
     ' Execute the program
-    ConsoleTitle programName ' set the window title
+    CONSOLETITLE programName ' set the window title
 
     ' Re-initialize stuff based on the optimized stream
     instructionPointer = 0
     memoryPointer = 0
-    programLength = Len(program)
+    programLength = LEN(program)
 
-    Do While instructionPointer < programLength
-        instruction = PeekString(program, instructionPointer)
+    DO WHILE instructionPointer < programLength
+        instruction = PeekStringByte(program, instructionPointer)
 
-        Select Case instruction
-            Case KEY_GREATER_THAN
+        SELECT CASE instruction
+            CASE KEY_GREATER_THAN
                 memoryPointer = memoryPointer + 1 ' increment the memory pointer
 
-                Select Case memoryPointer
-                    Case Is > UBound(memory) ' if we moved pass the memory address space
-                        ReDim Preserve As Unsigned Byte memory(0 To memoryPointer) ' dynamically grow the memory space preserving contents
+                SELECT CASE memoryPointer
+                    CASE IS > UBOUND(memory) ' if we moved pass the memory address space
+                        REDIM PRESERVE AS UNSIGNED BYTE memory(0 TO memoryPointer) ' dynamically grow the memory space preserving contents
 
-                    Case Is < 0 ' can happen if we move past the max value of long
-                        Error ERROR_CANNOT_CONTINUE ' throw an error
-                End Select
+                    CASE IS < 0 ' can happen if we move past the max value of long
+                        ERROR ERROR_CANNOT_CONTINUE ' throw an error
+                END SELECT
 
-            Case KEY_LESS_THAN
+            CASE KEY_LESS_THAN
                 memoryPointer = memoryPointer - 1 ' decrement the memory pointer
 
-                If memoryPointer < 0 Then Error ERROR_CANNOT_CONTINUE ' cannot go to negative address space
+                IF memoryPointer < 0 THEN ERROR ERROR_CANNOT_CONTINUE ' cannot go to negative address space
 
-            Case KEY_PLUS
+            CASE KEY_PLUS
                 memory(memoryPointer) = memory(memoryPointer) + 1
 
-            Case KEY_MINUS
+            CASE KEY_MINUS
                 memory(memoryPointer) = memory(memoryPointer) - 1
 
-            Case KEY_DOT
-                PutChar memory(memoryPointer)
+            CASE KEY_DOT
+                putchar memory(memoryPointer)
 
-            Case KEY_COMMA
+            CASE KEY_COMMA
                 ' Get the current window title and then tell the user that we need keyboard input
-                ConsoleTitle "[WAITING FOR INPUT] " + programName
+                CONSOLETITLE "[WAITING FOR INPUT] " + programName
 
-                memory(memoryPointer) = GetChar
+                memory(memoryPointer) = getchar
 
-                ConsoleTitle programName ' set the window title the way it was
+                CONSOLETITLE programName ' set the window title the way it was
 
-            Case KEY_OPEN_BRACKET
-                If memory(memoryPointer) = 0 Then instructionPointer = bracketPosition(instructionPointer)
+            CASE KEY_OPEN_BRACKET
+                IF memory(memoryPointer) = 0 THEN instructionPointer = bracketPosition(instructionPointer)
 
-            Case KEY_CLOSE_BRACKET
-                If memory(memoryPointer) <> 0 Then instructionPointer = bracketPosition(instructionPointer)
+            CASE KEY_CLOSE_BRACKET
+                IF memory(memoryPointer) <> 0 THEN instructionPointer = bracketPosition(instructionPointer)
 
-        End Select
+        END SELECT
 
         instructionPointer = instructionPointer + 1
-    Loop
-End Sub
+    LOOP
+END SUB
 '-----------------------------------------------------------------------------------------------------------------------
 
 '-----------------------------------------------------------------------------------------------------------------------
 ' MODULE FILES
 '-----------------------------------------------------------------------------------------------------------------------
-'$Include:'include/ProgramArgs.bas'
-'$Include:'include/FileOps.bas'
+'$INCLUDE:'include/ProgramArgs.bas'
+'$INCLUDE:'include/FileOps.bas'
 '-----------------------------------------------------------------------------------------------------------------------
 '-----------------------------------------------------------------------------------------------------------------------
