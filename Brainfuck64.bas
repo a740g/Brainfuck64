@@ -6,7 +6,7 @@
 '-----------------------------------------------------------------------------------------------------------------------
 ' HEADER FILES
 '-----------------------------------------------------------------------------------------------------------------------
-'$INCLUDE:'include/StdIO.bi'
+'$INCLUDE:'include/ConsoleOps.bi'
 '$INCLUDE:'include/PointerOps.bi'
 '$INCLUDE:'include/FileOps.bi'
 '-----------------------------------------------------------------------------------------------------------------------
@@ -26,8 +26,8 @@ $VERSIONINFO:Comments=https://github.com/a740g
 $VERSIONINFO:InternalName=Brainfuck64
 $VERSIONINFO:OriginalFilename=Brainfuck64.exe
 $VERSIONINFO:FileDescription=Brainfuck64 executable
-$VERSIONINFO:FILEVERSION#=1,0,0,0
-$VERSIONINFO:PRODUCTVERSION#=1,0,0,0
+$VERSIONINFO:FILEVERSION#=1,0,1,0
+$VERSIONINFO:PRODUCTVERSION#=1,0,1,0
 '-----------------------------------------------------------------------------------------------------------------------
 
 '-----------------------------------------------------------------------------------------------------------------------
@@ -88,7 +88,8 @@ SUB RunBrainfuckProgram (programString AS STRING, programName AS STRING)
     programLength = LEN(programString)
     program = SPACE$(programLength) ' allocate memory assuming we'll use the entire length of programString
 
-    FOR instructionPointer = 0 TO programLength - 1
+    instructionPointer = 0
+    WHILE instructionPointer < programLength
         instruction = PeekStringByte(programString, instructionPointer)
 
         ' Only accept supported commands and discard the rest
@@ -97,7 +98,9 @@ SUB RunBrainfuckProgram (programString AS STRING, programName AS STRING)
                 PokeStringByte program, memoryPointer, instruction
                 memoryPointer = memoryPointer + 1
         END SELECT
-    NEXT
+
+        instructionPointer = instructionPointer + 1
+    WEND
 
     program = LEFT$(program, memoryPointer) ' compact the program stream
 
@@ -105,7 +108,8 @@ SUB RunBrainfuckProgram (programString AS STRING, programName AS STRING)
     CONSOLETITLE "Building jump table..."
 
     programLength = LEN(program)
-    FOR instructionPointer = 0 TO programLength - 1
+    instructionPointer = 0
+    WHILE instructionPointer < programLength
         instruction = PeekStringByte(program, instructionPointer)
 
         SELECT CASE instruction
@@ -129,7 +133,9 @@ SUB RunBrainfuckProgram (programString AS STRING, programName AS STRING)
 
                 bracketOpenCount = bracketOpenCount - 1
         END SELECT
-    NEXT
+
+        instructionPointer = instructionPointer + 1
+    WEND
 
     IF bracketOpenCount > 0 THEN ERROR ERROR_SYNTAX_ERROR ' brackets are not matched
 
@@ -168,13 +174,13 @@ SUB RunBrainfuckProgram (programString AS STRING, programName AS STRING)
                 memory(memoryPointer) = memory(memoryPointer) - 1
 
             CASE KEY_DOT
-                putchar memory(memoryPointer)
+                Console_PutCharacter memory(memoryPointer)
 
             CASE KEY_COMMA
                 ' Get the current window title and then tell the user that we need keyboard input
                 CONSOLETITLE "[WAITING FOR INPUT] " + programName
 
-                memory(memoryPointer) = getchar
+                memory(memoryPointer) = Console_GetCharacter
 
                 CONSOLETITLE programName ' set the window title the way it was
 
