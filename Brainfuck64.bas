@@ -17,15 +17,15 @@
 $NOPREFIX
 $CONSOLE:ONLY
 $EXEICON:'./Brainfuck64.ico'
-$VERSIONINFO:ProductName=Brainfuck64
-$VERSIONINFO:CompanyName=Samuel Gomes
-$VERSIONINFO:LegalCopyright=Copyright (c) 2023 Samuel Gomes
-$VERSIONINFO:LegalTrademarks=All trademarks are property of their respective owners
-$VERSIONINFO:Web=https://github.com/a740g
-$VERSIONINFO:Comments=https://github.com/a740g
-$VERSIONINFO:InternalName=Brainfuck64
-$VERSIONINFO:OriginalFilename=Brainfuck64.exe
-$VERSIONINFO:FileDescription=Brainfuck64 executable
+$VERSIONINFO:ProductName='Brainfuck64'
+$VERSIONINFO:CompanyName='Samuel Gomes'
+$VERSIONINFO:LegalCopyright='Copyright (c) 2023 Samuel Gomes'
+$VERSIONINFO:LegalTrademarks='All trademarks are property of their respective owners'
+$VERSIONINFO:Web='https://github.com/a740g'
+$VERSIONINFO:Comments='https://github.com/a740g'
+$VERSIONINFO:InternalName='Brainfuck64'
+$VERSIONINFO:OriginalFilename='Brainfuck64.exe'
+$VERSIONINFO:FileDescription='Brainfuck64 executable'
 $VERSIONINFO:FILEVERSION#=1,0,1,0
 $VERSIONINFO:PRODUCTVERSION#=1,0,1,0
 '-----------------------------------------------------------------------------------------------------------------------
@@ -45,19 +45,19 @@ CHDIR STARTDIR$
 
 ' If there are no command line parameters just show some info and exit
 IF COMMANDCOUNT < 1 OR GetProgramArgumentIndex(KEY_QUESTION_MARK) > 0 THEN
-    PRINT
-    PRINT "Brainfuck64: A Brainfuck interpreter written in QB64-PE"
-    PRINT "Copyright (c) 2023 Samuel Gomes"
-    PRINT
-    PRINT "https://github.com/a740g"
-    PRINT
-    PRINT "Usage: Brainfuck64 [program1.bf] [program2.bf] ..."
-    PRINT
-    PRINT "Note:"
-    PRINT " * Wildcards (*, ?) are supported"
-    PRINT " * URLs are supported"
-    PRINT " * On Windows, use Terminal for best results"
-    PRINT
+    ECHO EMPTY_STRING
+    ECHO "Brainfuck64: A Brainfuck interpreter written in QB64-PE"
+    ECHO "Copyright (c) 2023 Samuel Gomes"
+    ECHO EMPTY_STRING
+    ECHO "https://github.com/a740g"
+    ECHO EMPTY_STRING
+    ECHO "Usage: Brainfuck64 [program1.bf] [program2.bf] ..."
+    ECHO EMPTY_STRING
+    ECHO "Note:"
+    ECHO " * Wildcards (*, ?) are supported"
+    ECHO " * URLs are supported"
+    ECHO " * On Windows, use Terminal for best results"
+    ECHO EMPTY_STRING
     SYSTEM
 END IF
 
@@ -65,7 +65,7 @@ DIM i AS UNSIGNED LONG
 
 FOR i = 1 TO COMMANDCOUNT
     RunBrainfuckProgram LoadFile(COMMAND$(i)), GetFileNameFromPathOrURL(COMMAND$(i))
-    IF i < COMMANDCOUNT THEN PRINT ' move to a new line if we are running more than one program
+    IF i < COMMANDCOUNT THEN ECHO EMPTY_STRING ' move to a new line if we are running more than one program
 NEXT
 
 SYSTEM
