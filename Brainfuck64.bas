@@ -26,8 +26,8 @@ $VERSIONINFO:Comments='https://github.com/a740g'
 $VERSIONINFO:InternalName='Brainfuck64'
 $VERSIONINFO:OriginalFilename='Brainfuck64.exe'
 $VERSIONINFO:FileDescription='Brainfuck64 executable'
-$VERSIONINFO:FILEVERSION#=1,0,1,0
-$VERSIONINFO:PRODUCTVERSION#=1,0,1,0
+$VERSIONINFO:FILEVERSION#=1,0,2,0
+$VERSIONINFO:PRODUCTVERSION#=1,0,2,0
 '-----------------------------------------------------------------------------------------------------------------------
 
 '-----------------------------------------------------------------------------------------------------------------------
@@ -44,29 +44,36 @@ CONST INTERPRETER_MEMORY_DEFAULT = 30000
 CHDIR STARTDIR$
 
 ' If there are no command line parameters just show some info and exit
-IF COMMANDCOUNT < 1 OR GetProgramArgumentIndex(KEY_QUESTION_MARK) > 0 THEN
-    ECHO EMPTY_STRING
+IF COMMANDCOUNT < 1 THEN
+    ECHO STRING_EMPTY
     ECHO "Brainfuck64: A Brainfuck interpreter written in QB64-PE"
     ECHO "Copyright (c) 2023 Samuel Gomes"
-    ECHO EMPTY_STRING
+    ECHO STRING_EMPTY
     ECHO "https://github.com/a740g"
-    ECHO EMPTY_STRING
+    ECHO STRING_EMPTY
     ECHO "Usage: Brainfuck64 [program1.bf] [program2.bf] ..."
-    ECHO EMPTY_STRING
+    ECHO STRING_EMPTY
     ECHO "Note:"
     ECHO " * Wildcards (*, ?) are supported"
     ECHO " * URLs are supported"
     ECHO " * On Windows, use Terminal for best results"
-    ECHO EMPTY_STRING
-    SYSTEM
+    ECHO STRING_EMPTY
+
+    DO
+        DIM fileName AS STRING: fileName = _OPENFILEDIALOG$("Open Brainfuck File", , "*.bf|*.BF|*.Bf|*.bF", "Brainfuck files")
+
+        IF LEN(fileName) > 0 THEN
+            ECHO STRING_EMPTY ' move to a new line if we are running more than one program
+            RunBrainfuckProgram LoadFile(fileName), GetFileNameFromPathOrURL(fileName)
+        END IF
+    LOOP UNTIL LEN(fileName) = NULL
+ELSE
+    DIM i AS UNSIGNED LONG: FOR i = 1 TO COMMANDCOUNT
+        RunBrainfuckProgram LoadFile(COMMAND$(i)), GetFileNameFromPathOrURL(COMMAND$(i))
+
+        IF i < COMMANDCOUNT THEN ECHO STRING_EMPTY ' move to a new line if we are running more than one program
+    NEXT
 END IF
-
-DIM i AS UNSIGNED LONG
-
-FOR i = 1 TO COMMANDCOUNT
-    RunBrainfuckProgram LoadFile(COMMAND$(i)), GetFileNameFromPathOrURL(COMMAND$(i))
-    IF i < COMMANDCOUNT THEN ECHO EMPTY_STRING ' move to a new line if we are running more than one program
-NEXT
 
 SYSTEM
 '-----------------------------------------------------------------------------------------------------------------------
