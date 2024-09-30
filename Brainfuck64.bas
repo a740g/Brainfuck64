@@ -1,6 +1,6 @@
 '-----------------------------------------------------------------------------------------------------------------------
 ' QB64-PE Brainfuck interpreter
-' Copyright (c) 2023 Samuel Gomes
+' Copyright (c) 2024 Samuel Gomes
 '-----------------------------------------------------------------------------------------------------------------------
 
 '-----------------------------------------------------------------------------------------------------------------------
@@ -8,26 +8,26 @@
 '-----------------------------------------------------------------------------------------------------------------------
 '$INCLUDE:'include/ConsoleOps.bi'
 '$INCLUDE:'include/PointerOps.bi'
-'$INCLUDE:'include/FileOps.bi'
+'$INCLUDE:'include/Pathname.bi'
+'$INCLUDE:'include/File.bi'
 '-----------------------------------------------------------------------------------------------------------------------
 
 '-----------------------------------------------------------------------------------------------------------------------
 ' METACOMMANDS
 '-----------------------------------------------------------------------------------------------------------------------
-$NOPREFIX
 $CONSOLE:ONLY
 $EXEICON:'./Brainfuck64.ico'
 $VERSIONINFO:ProductName='Brainfuck64'
 $VERSIONINFO:CompanyName='Samuel Gomes'
-$VERSIONINFO:LegalCopyright='Copyright (c) 2023 Samuel Gomes'
+$VERSIONINFO:LegalCopyright='Copyright (c) 2024 Samuel Gomes'
 $VERSIONINFO:LegalTrademarks='All trademarks are property of their respective owners'
 $VERSIONINFO:Web='https://github.com/a740g'
 $VERSIONINFO:Comments='https://github.com/a740g'
 $VERSIONINFO:InternalName='Brainfuck64'
 $VERSIONINFO:OriginalFilename='Brainfuck64.exe'
 $VERSIONINFO:FileDescription='Brainfuck64 executable'
-$VERSIONINFO:FILEVERSION#=1,0,2,0
-$VERSIONINFO:PRODUCTVERSION#=1,0,2,0
+$VERSIONINFO:FILEVERSION#=1,0,3,0
+$VERSIONINFO:PRODUCTVERSION#=1,0,3,0
 '-----------------------------------------------------------------------------------------------------------------------
 
 '-----------------------------------------------------------------------------------------------------------------------
@@ -41,37 +41,37 @@ CONST INTERPRETER_MEMORY_DEFAULT = 30000
 ' PROGRAM ENTRY POINT
 '-----------------------------------------------------------------------------------------------------------------------
 ' Change to the directory specified by the environment
-CHDIR STARTDIR$
+CHDIR _STARTDIR$
 
 ' If there are no command line parameters just show some info and exit
-IF COMMANDCOUNT < 1 THEN
-    ECHO STRING_EMPTY
-    ECHO "Brainfuck64: A Brainfuck interpreter written in QB64-PE"
-    ECHO "Copyright (c) 2023 Samuel Gomes"
-    ECHO STRING_EMPTY
-    ECHO "https://github.com/a740g"
-    ECHO STRING_EMPTY
-    ECHO "Usage: Brainfuck64 [program1.bf] [program2.bf] ..."
-    ECHO STRING_EMPTY
-    ECHO "Note:"
-    ECHO " * Wildcards (*, ?) are supported"
-    ECHO " * URLs are supported"
-    ECHO " * On Windows, use Terminal for best results"
-    ECHO STRING_EMPTY
+IF _COMMANDCOUNT < 1 THEN
+    _ECHO STRING_EMPTY
+    _ECHO "Brainfuck64: A Brainfuck interpreter written in QB64-PE"
+    _ECHO "Copyright (c) 2024 Samuel Gomes"
+    _ECHO STRING_EMPTY
+    _ECHO "https://github.com/a740g"
+    _ECHO STRING_EMPTY
+    _ECHO "Usage: Brainfuck64 [program1.bf] [program2.bf] ..."
+    _ECHO STRING_EMPTY
+    _ECHO "Note:"
+    _ECHO " * Wildcards (*, ?) are supported"
+    _ECHO " * URLs are supported"
+    _ECHO " * On Windows, use Terminal for best results"
+    _ECHO STRING_EMPTY
 
     DO
         DIM fileName AS STRING: fileName = _OPENFILEDIALOG$("Open Brainfuck File", , "*.bf|*.BF|*.Bf|*.bF", "Brainfuck files")
 
         IF LEN(fileName) > 0 THEN
-            ECHO STRING_EMPTY ' move to a new line if we are running more than one program
-            RunBrainfuckProgram LoadFile(fileName), GetFileNameFromPathOrURL(fileName)
+            _ECHO STRING_EMPTY ' move to a new line if we are running more than one program
+            RunBrainfuckProgram File_Load(fileName), Pathname_GetFileName(fileName)
         END IF
     LOOP UNTIL LEN(fileName) = NULL
 ELSE
-    DIM i AS UNSIGNED LONG: FOR i = 1 TO COMMANDCOUNT
-        RunBrainfuckProgram LoadFile(COMMAND$(i)), GetFileNameFromPathOrURL(COMMAND$(i))
+    DIM i AS _UNSIGNED LONG: FOR i = 1 TO _COMMANDCOUNT
+        RunBrainfuckProgram File_Load(COMMAND$(i)), Pathname_GetFileName(COMMAND$(i))
 
-        IF i < COMMANDCOUNT THEN ECHO STRING_EMPTY ' move to a new line if we are running more than one program
+        IF i < _COMMANDCOUNT THEN _ECHO STRING_EMPTY ' move to a new line if we are running more than one program
     NEXT
 END IF
 
@@ -82,15 +82,15 @@ SYSTEM
 ' FUNCTIONS AND SUBROUTINES
 '-----------------------------------------------------------------------------------------------------------------------
 SUB RunBrainfuckProgram (programString AS STRING, programName AS STRING)
-    REDIM AS UNSIGNED BYTE memory(0 TO INTERPRETER_MEMORY_DEFAULT - 1)
-    DIM AS UNSIGNED BYTE instruction
+    REDIM AS _UNSIGNED _BYTE memory(0 TO INTERPRETER_MEMORY_DEFAULT - 1)
+    DIM AS _UNSIGNED _BYTE instruction
     DIM AS LONG instructionPointer, memoryPointer, programLength, bracketOpenCount
     REDIM AS LONG bracketPosition(0 TO 0) ' matching bracket positions
     REDIM AS LONG stack(0 TO 0)
     DIM AS STRING program
 
     ' Optimize program stream
-    CONSOLETITLE "Optimizing..."
+    _CONSOLETITLE "Optimizing..."
 
     programLength = LEN(programString)
     program = SPACE$(programLength) ' allocate memory assuming we'll use the entire length of programString
@@ -112,7 +112,7 @@ SUB RunBrainfuckProgram (programString AS STRING, programName AS STRING)
     program = LEFT$(program, memoryPointer) ' compact the program stream
 
     ' Build jump table
-    CONSOLETITLE "Building jump table..."
+    _CONSOLETITLE "Building jump table..."
 
     programLength = LEN(program)
     instructionPointer = 0
@@ -125,14 +125,14 @@ SUB RunBrainfuckProgram (programString AS STRING, programName AS STRING)
 
                 bracketOpenCount = bracketOpenCount + 1
                 IF bracketOpenCount > UBOUND(stack) THEN ' we moved past the stack upper bound
-                    REDIM PRESERVE AS LONG stack(0 TO bracketOpenCount) ' dynamically grow the stack space preserving contents
+                    REDIM _PRESERVE AS LONG stack(0 TO bracketOpenCount) ' dynamically grow the stack space preserving contents
                 END IF
 
             CASE KEY_CLOSE_BRACKET
                 IF bracketOpenCount < 1 THEN ERROR ERROR_SYNTAX_ERROR ' brackets are not matched
 
                 IF instructionPointer > UBOUND(bracketPosition) THEN
-                    REDIM PRESERVE AS LONG bracketPosition(0 TO instructionPointer)
+                    REDIM _PRESERVE AS LONG bracketPosition(0 TO instructionPointer)
                 END IF
 
                 bracketPosition(instructionPointer) = stack(bracketOpenCount - 1)
@@ -147,7 +147,7 @@ SUB RunBrainfuckProgram (programString AS STRING, programName AS STRING)
     IF bracketOpenCount > 0 THEN ERROR ERROR_SYNTAX_ERROR ' brackets are not matched
 
     ' Execute the program
-    CONSOLETITLE programName ' set the window title
+    _CONSOLETITLE programName ' set the window title
 
     ' Re-initialize stuff based on the optimized stream
     instructionPointer = 0
@@ -163,7 +163,7 @@ SUB RunBrainfuckProgram (programString AS STRING, programName AS STRING)
 
                 SELECT CASE memoryPointer
                     CASE IS > UBOUND(memory) ' if we moved pass the memory address space
-                        REDIM PRESERVE AS UNSIGNED BYTE memory(0 TO memoryPointer) ' dynamically grow the memory space preserving contents
+                        REDIM _PRESERVE AS _UNSIGNED _BYTE memory(0 TO memoryPointer) ' dynamically grow the memory space preserving contents
 
                     CASE IS < 0 ' can happen if we move past the max value of long
                         ERROR ERROR_CANNOT_CONTINUE ' throw an error
@@ -185,11 +185,11 @@ SUB RunBrainfuckProgram (programString AS STRING, programName AS STRING)
 
             CASE KEY_COMMA
                 ' Get the current window title and then tell the user that we need keyboard input
-                CONSOLETITLE "[WAITING FOR INPUT] " + programName
+                _CONSOLETITLE "[WAITING FOR INPUT] " + programName
 
                 memory(memoryPointer) = Console_GetCharacter
 
-                CONSOLETITLE programName ' set the window title the way it was
+                _CONSOLETITLE programName ' set the window title the way it was
 
             CASE KEY_OPEN_BRACKET
                 IF memory(memoryPointer) = 0 THEN instructionPointer = bracketPosition(instructionPointer)
@@ -208,6 +208,7 @@ END SUB
 ' MODULE FILES
 '-----------------------------------------------------------------------------------------------------------------------
 '$INCLUDE:'include/ProgramArgs.bas'
-'$INCLUDE:'include/FileOps.bas'
+'$INCLUDE:'include/Pathname.bas'
+'$INCLUDE:'include/File.bas'
 '-----------------------------------------------------------------------------------------------------------------------
 '-----------------------------------------------------------------------------------------------------------------------
