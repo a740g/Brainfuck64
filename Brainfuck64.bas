@@ -26,8 +26,8 @@ $VERSIONINFO:Comments='https://github.com/a740g'
 $VERSIONINFO:InternalName='Brainfuck64'
 $VERSIONINFO:OriginalFilename='Brainfuck64.exe'
 $VERSIONINFO:FileDescription='Brainfuck64 executable'
-$VERSIONINFO:FILEVERSION#=1,0,3,0
-$VERSIONINFO:PRODUCTVERSION#=1,0,3,0
+$VERSIONINFO:FILEVERSION#=1,0,4,0
+$VERSIONINFO:PRODUCTVERSION#=1,0,4,0
 '-----------------------------------------------------------------------------------------------------------------------
 
 '-----------------------------------------------------------------------------------------------------------------------
@@ -45,25 +45,25 @@ CHDIR _STARTDIR$
 
 ' If there are no command line parameters just show some info and exit
 IF _COMMANDCOUNT < 1 THEN
-    _ECHO STRING_EMPTY
+    _ECHO _STR_EMPTY
     _ECHO "Brainfuck64: A Brainfuck interpreter written in QB64-PE"
     _ECHO "Copyright (c) 2024 Samuel Gomes"
-    _ECHO STRING_EMPTY
+    _ECHO _STR_EMPTY
     _ECHO "https://github.com/a740g"
-    _ECHO STRING_EMPTY
+    _ECHO _STR_EMPTY
     _ECHO "Usage: Brainfuck64 [program1.bf] [program2.bf] ..."
-    _ECHO STRING_EMPTY
+    _ECHO _STR_EMPTY
     _ECHO "Note:"
     _ECHO " * Wildcards (*, ?) are supported"
     _ECHO " * URLs are supported"
     _ECHO " * On Windows, use Terminal for best results"
-    _ECHO STRING_EMPTY
+    _ECHO _STR_EMPTY
 
     DO
         DIM fileName AS STRING: fileName = _OPENFILEDIALOG$("Open Brainfuck File", , "*.bf|*.BF|*.Bf|*.bF", "Brainfuck files")
 
         IF LEN(fileName) > 0 THEN
-            _ECHO STRING_EMPTY ' move to a new line if we are running more than one program
+            _ECHO _STR_EMPTY ' move to a new line if we are running more than one program
             RunBrainfuckProgram File_Load(fileName), Pathname_GetFileName(fileName)
         END IF
     LOOP UNTIL LEN(fileName) = NULL
@@ -71,7 +71,7 @@ ELSE
     DIM i AS _UNSIGNED LONG: FOR i = 1 TO _COMMANDCOUNT
         RunBrainfuckProgram File_Load(COMMAND$(i)), Pathname_GetFileName(COMMAND$(i))
 
-        IF i < _COMMANDCOUNT THEN _ECHO STRING_EMPTY ' move to a new line if we are running more than one program
+        IF i < _COMMANDCOUNT THEN _ECHO _STR_EMPTY ' move to a new line if we are running more than one program
     NEXT
 END IF
 
@@ -129,7 +129,7 @@ SUB RunBrainfuckProgram (programString AS STRING, programName AS STRING)
                 END IF
 
             CASE KEY_CLOSE_BRACKET
-                IF bracketOpenCount < 1 THEN ERROR ERROR_SYNTAX_ERROR ' brackets are not matched
+                IF bracketOpenCount < 1 THEN ERROR _ERR_SYNTAX_ERROR ' brackets are not matched
 
                 IF instructionPointer > UBOUND(bracketPosition) THEN
                     REDIM _PRESERVE AS LONG bracketPosition(0 TO instructionPointer)
@@ -144,7 +144,7 @@ SUB RunBrainfuckProgram (programString AS STRING, programName AS STRING)
         instructionPointer = instructionPointer + 1
     WEND
 
-    IF bracketOpenCount > 0 THEN ERROR ERROR_SYNTAX_ERROR ' brackets are not matched
+    IF bracketOpenCount > 0 THEN ERROR _ERR_SYNTAX_ERROR ' brackets are not matched
 
     ' Execute the program
     _CONSOLETITLE programName ' set the window title
@@ -166,13 +166,13 @@ SUB RunBrainfuckProgram (programString AS STRING, programName AS STRING)
                         REDIM _PRESERVE AS _UNSIGNED _BYTE memory(0 TO memoryPointer) ' dynamically grow the memory space preserving contents
 
                     CASE IS < 0 ' can happen if we move past the max value of long
-                        ERROR ERROR_CANNOT_CONTINUE ' throw an error
+                        ERROR _ERR_CANNOT_CONTINUE ' throw an error
                 END SELECT
 
             CASE KEY_LESS_THAN
                 memoryPointer = memoryPointer - 1 ' decrement the memory pointer
 
-                IF memoryPointer < 0 THEN ERROR ERROR_CANNOT_CONTINUE ' cannot go to negative address space
+                IF memoryPointer < 0 THEN ERROR _ERR_CANNOT_CONTINUE ' cannot go to negative address space
 
             CASE KEY_PLUS
                 memory(memoryPointer) = memory(memoryPointer) + 1
