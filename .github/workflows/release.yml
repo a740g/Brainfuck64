@@ -23,21 +23,16 @@ jobs:
             asset_pattern: "qb64pe_win-x64-*.7z"
             bin_name: Brainfuck64.exe
             archive_name: Brainfuck64-windows-x64.zip
-          - name: Windows-x86
-            os: windows-latest
-            asset_pattern: "qb64pe_win-x86-*.7z"
-            bin_name: Brainfuck64.exe
-            archive_name: Brainfuck64-windows-x86.zip
           - name: Windows-arm64
             os: windows-11-arm
             asset_pattern: "qb64pe_win-arm64-*.7z"
             bin_name: Brainfuck64.exe
             archive_name: Brainfuck64-windows-arm64.zip
-          - name: macOS-x64
+          - name: macOS-arm64
             os: macos-latest
             asset_pattern: "qb64pe_osx-*.tar.gz"
             bin_name: Brainfuck64
-            archive_name: Brainfuck64-macos-x64.zip
+            archive_name: Brainfuck64-macos-arm64.zip
 
     steps:
       - name: Checkout code
