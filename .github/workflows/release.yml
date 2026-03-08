@@ -108,8 +108,10 @@ jobs:
 
       - name: Package (Windows)
         if: runner.os == 'Windows'
+        shell: bash
         run: |
-          7z a -tzip ${{ matrix.archive_name }} . -xr!.git -xr!.github -xr!tests -xr!qb64_dl -xr!qb64_src -x!*.o -x!*.obj -x!*.a -x!*.lib -x!Makefile
+          7z a -tzip "${{ matrix.archive_name }}" . -xr'!.git' -xr'!.github' -xr'!tests' -xr'!qb64_dl' -xr'!qb64_src' -x'#*.o' -x'!*.obj' -x'!.a' -x'!*.lib' -x'!.Makefile'
+
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
