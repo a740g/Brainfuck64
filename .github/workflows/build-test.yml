@@ -1,0 +1,80 @@
+name: Build and Test
+
+on:
+  push:
+    branches: [main, master]
+    paths-ignore:
+      - "**.md"
+      - "screenshots/**"
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  build-test:
+    name: Build & Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux-x64
+            os: ubuntu-latest
+            asset_pattern: "qb64pe_lnx-*.tar.gz"
+          - name: Windows-x64
+            os: windows-latest
+            asset_pattern: "qb64pe_win-x64-*.7z"
+          - name: Windows-x86
+            os: windows-latest
+            asset_pattern: "qb64pe_win-x86-*.7z"
+          - name: Windows-arm64
+            os: windows-11-arm
+            asset_pattern: "qb64pe_win-arm64-*.7z"
+          - name: macOS-x64
+            os: macos-latest
+            asset_pattern: "qb64pe_osx-*.tar.gz"
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libasound2-dev libglu1-mesa-dev freeglut3-dev mesa-common-dev libx11-dev libxext-dev
+
+      - name: Download QB64-PE
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download latest -R QB64-Phoenix-Edition/QB64pe -p "${{ matrix.asset_pattern }}" --dir qb64_dl
+
+      - name: Extract QB64-PE (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          mkdir qb64pe
+          tar -xzf qb64_dl/*.tar.gz -C qb64pe --strip-components=1
+
+      - name: Extract QB64-PE (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          7z x qb64_dl/*.7z -oqb64pe
+          # The Windows zip usually has a subfolder, let's find it and move contents up if needed
+          $subFolder = Get-ChildItem -Path qb64pe -Directory | Select-Object -First 1
+          if ($subFolder) {
+            Move-Item -Path "$($subFolder.FullName)\*" -Destination qb64pe\
+          }
+
+      - name: Build
+        shell: bash
+        run: |
+          export QB64PE_PATH=$(pwd)/qb64pe
+          make
+
+      - name: Run Tests
+        shell: bash
+        run: |
+          export QB64PE_PATH=$(pwd)/qb64pe
+          make test
