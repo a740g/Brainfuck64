@@ -6,10 +6,11 @@
 '-----------------------------------------------------------------------------------------------------------------------
 ' HEADER FILES
 '-----------------------------------------------------------------------------------------------------------------------
-'$INCLUDE:'include/ConsoleOps.bi'
-'$INCLUDE:'include/PointerOps.bi'
-'$INCLUDE:'include/Pathname.bi'
-'$INCLUDE:'include/File.bi'
+$LET TOOLBOX64_STRICT = TRUE
+'$INCLUDE:'include/Console/Console.bi'
+'$INCLUDE:'include/Core/PointerOps.bi'
+'$INCLUDE:'include/FS/Pathname.bi'
+'$INCLUDE:'include/IO/File.bi'
 '-----------------------------------------------------------------------------------------------------------------------
 
 '-----------------------------------------------------------------------------------------------------------------------
@@ -19,7 +20,7 @@ $CONSOLE:ONLY
 $EXEICON:'./Brainfuck64.ico'
 $VERSIONINFO:ProductName='Brainfuck64'
 $VERSIONINFO:CompanyName='Samuel Gomes'
-$VERSIONINFO:LegalCopyright='Copyright (c) 2024 Samuel Gomes'
+$VERSIONINFO:LegalCopyright='Copyright (c) 2025 Samuel Gomes'
 $VERSIONINFO:LegalTrademarks='All trademarks are property of their respective owners'
 $VERSIONINFO:Web='https://github.com/a740g'
 $VERSIONINFO:Comments='https://github.com/a740g'
@@ -101,7 +102,7 @@ SUB RunBrainfuckProgram (programString AS STRING, programName AS STRING)
 
         ' Only accept supported commands and discard the rest
         SELECT CASE instruction
-            CASE KEY_GREATER_THAN, KEY_LESS_THAN, KEY_PLUS, KEY_MINUS, KEY_DOT, KEY_COMMA, KEY_OPEN_BRACKET, KEY_CLOSE_BRACKET ' regular commands
+            CASE _ASC_GREATERTHAN, _ASC_LESSTHAN, _ASC_PLUS, _ASC_MINUS, _ASC_FULLSTOP, _ASC_COMMA, _ASC_LEFTSQUAREBRACKET, _ASC_RIGHTSQUAREBRACKET ' regular commands
                 PokeStringByte program, memoryPointer, instruction
                 memoryPointer = memoryPointer + 1
         END SELECT
@@ -120,7 +121,7 @@ SUB RunBrainfuckProgram (programString AS STRING, programName AS STRING)
         instruction = PeekStringByte(program, instructionPointer)
 
         SELECT CASE instruction
-            CASE KEY_OPEN_BRACKET
+            CASE _ASC_LEFTSQUAREBRACKET
                 stack(bracketOpenCount) = instructionPointer
 
                 bracketOpenCount = bracketOpenCount + 1
@@ -128,7 +129,7 @@ SUB RunBrainfuckProgram (programString AS STRING, programName AS STRING)
                     REDIM _PRESERVE AS LONG stack(0 TO bracketOpenCount) ' dynamically grow the stack space preserving contents
                 END IF
 
-            CASE KEY_CLOSE_BRACKET
+            CASE _ASC_RIGHTSQUAREBRACKET
                 IF bracketOpenCount < 1 THEN ERROR _ERR_SYNTAX_ERROR ' brackets are not matched
 
                 IF instructionPointer > UBOUND(bracketPosition) THEN
@@ -158,7 +159,7 @@ SUB RunBrainfuckProgram (programString AS STRING, programName AS STRING)
         instruction = PeekStringByte(program, instructionPointer)
 
         SELECT CASE instruction
-            CASE KEY_GREATER_THAN
+            CASE _ASC_GREATERTHAN
                 memoryPointer = memoryPointer + 1 ' increment the memory pointer
 
                 SELECT CASE memoryPointer
@@ -169,32 +170,32 @@ SUB RunBrainfuckProgram (programString AS STRING, programName AS STRING)
                         ERROR _ERR_CANNOT_CONTINUE ' throw an error
                 END SELECT
 
-            CASE KEY_LESS_THAN
+            CASE _ASC_LESSTHAN
                 memoryPointer = memoryPointer - 1 ' decrement the memory pointer
 
                 IF memoryPointer < 0 THEN ERROR _ERR_CANNOT_CONTINUE ' cannot go to negative address space
 
-            CASE KEY_PLUS
+            CASE _ASC_PLUS
                 memory(memoryPointer) = memory(memoryPointer) + 1
 
-            CASE KEY_MINUS
+            CASE _ASC_MINUS
                 memory(memoryPointer) = memory(memoryPointer) - 1
 
-            CASE KEY_DOT
-                Console_PutCharacter memory(memoryPointer)
+            CASE _ASC_FULLSTOP
+                Console_WriteChar memory(memoryPointer)
 
-            CASE KEY_COMMA
+            CASE _ASC_COMMA
                 ' Get the current window title and then tell the user that we need keyboard input
                 _CONSOLETITLE "[WAITING FOR INPUT] " + programName
 
-                memory(memoryPointer) = Console_GetCharacter
+                memory(memoryPointer) = Console_ReadChar
 
                 _CONSOLETITLE programName ' set the window title the way it was
 
-            CASE KEY_OPEN_BRACKET
+            CASE _ASC_LEFTSQUAREBRACKET
                 IF memory(memoryPointer) = 0 THEN instructionPointer = bracketPosition(instructionPointer)
 
-            CASE KEY_CLOSE_BRACKET
+            CASE _ASC_RIGHTSQUAREBRACKET
                 IF memory(memoryPointer) <> 0 THEN instructionPointer = bracketPosition(instructionPointer)
 
         END SELECT
@@ -207,8 +208,8 @@ END SUB
 '-----------------------------------------------------------------------------------------------------------------------
 ' MODULE FILES
 '-----------------------------------------------------------------------------------------------------------------------
-'$INCLUDE:'include/ProgramArgs.bas'
-'$INCLUDE:'include/Pathname.bas'
-'$INCLUDE:'include/File.bas'
+'$INCLUDE:'include/CLI/Args.bas'
+'$INCLUDE:'include/FS/Pathname.bas'
+'$INCLUDE:'include/IO/File.bas'
 '-----------------------------------------------------------------------------------------------------------------------
 '-----------------------------------------------------------------------------------------------------------------------
