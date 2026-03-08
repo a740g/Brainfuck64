@@ -1,6 +1,6 @@
 '-----------------------------------------------------------------------------------------------------------------------
 ' QB64-PE Brainfuck interpreter
-' Copyright (c) 2024 Samuel Gomes
+' Copyright (c) 2025 Samuel Gomes
 '-----------------------------------------------------------------------------------------------------------------------
 
 $LET TOOLBOX64_STRICT = TRUE
@@ -25,6 +25,7 @@ $VERSIONINFO:PRODUCTVERSION#=1,1,0,0
 
 CONST APP_NAME = "Brainfuck64"
 CONST INITIAL_MEMORY_SIZE = 30000
+CONST MEMORY_CHUNK_SIZE = 1048576
 
 CHDIR _STARTDIR$
 
@@ -78,6 +79,8 @@ SUB ExecuteBrainfuck (sourceCode AS STRING, sourceName AS STRING)
         offset AS LONG
         multiplier AS LONG
     END TYPE
+
+    CONST __SIZE_OF_RELATIVE_ADDITION = 2 * _SIZE_OF_LONG
 
     _CONSOLETITLE "Optimizing..."
     DIM sourceLength AS LONG: sourceLength = LEN(sourceCode)
@@ -147,6 +150,7 @@ SUB ExecuteBrainfuck (sourceCode AS STRING, sourceName AS STRING)
                 END IF
 
             CASE _ASC_LEFTSQUAREBRACKET
+                DIM handled AS LONG: handled = _FALSE
                 IF charIndex + 2 < cleanedLength THEN
                     DIM next1 AS _UNSIGNED _BYTE: next1 = PeekStringByte(cleanedCode, charIndex + 1)
                     DIM next2 AS _UNSIGNED _BYTE: next2 = PeekStringByte(cleanedCode, charIndex + 2)
@@ -155,11 +159,13 @@ SUB ExecuteBrainfuck (sourceCode AS STRING, sourceName AS STRING)
                         opValues(instructionCount) = 0
                         instructionCount = instructionCount + 1
                         charIndex = charIndex + 2
-                        GOTO PrepareNextInstruction
+                        handled = _TRUE
                     END IF
                 END IF
-                opCodes(instructionCount) = OP_JZ
-                instructionCount = instructionCount + 1
+                IF NOT handled THEN
+                    opCodes(instructionCount) = OP_JZ
+                    instructionCount = instructionCount + 1
+                END IF
 
             CASE _ASC_RIGHTSQUAREBRACKET
                 opCodes(instructionCount) = OP_JNZ
@@ -174,7 +180,6 @@ SUB ExecuteBrainfuck (sourceCode AS STRING, sourceName AS STRING)
                 instructionCount = instructionCount + 1
         END SELECT
 
-        PrepareNextInstruction:
         charIndex = charIndex + 1
     WEND
 
@@ -213,10 +218,11 @@ SUB ExecuteBrainfuck (sourceCode AS STRING, sourceName AS STRING)
                 relativeOffset = 0
                 isSimpleLoop = _TRUE
                 FOR innerIdx = loopIdx + 2 TO closeBracketIndex - 1
-                    IF opCodes(innerIdx) <> OP_MOVE AND opCodes(innerIdx) <> OP_ADD THEN
+                    commandByte = opCodes(innerIdx)
+                    IF commandByte <> OP_MOVE AND commandByte <> OP_ADD THEN
                         isSimpleLoop = _FALSE: EXIT FOR
                     END IF
-                    IF opCodes(innerIdx) = OP_MOVE THEN relativeOffset = relativeOffset + opValues(innerIdx)
+                    IF commandByte = OP_MOVE THEN relativeOffset = relativeOffset + opValues(innerIdx)
                 NEXT
                 IF isSimpleLoop AND relativeOffset = 0 THEN
                     opCodes(loopIdx) = OP_ADD_REL_MULTI
@@ -224,9 +230,10 @@ SUB ExecuteBrainfuck (sourceCode AS STRING, sourceName AS STRING)
                     relativeOffset = 0
                     entriesInLoop = 0
                     FOR innerIdx = loopIdx + 2 TO closeBracketIndex - 1
-                        IF opCodes(innerIdx) = OP_MOVE THEN
+                        commandByte = opCodes(innerIdx)
+                        IF commandByte = OP_MOVE THEN
                             relativeOffset = relativeOffset + opValues(innerIdx)
-                        ELSEIF opCodes(innerIdx) = OP_ADD THEN
+                        ELSEIF commandByte = OP_ADD THEN
                             multiAddTable(multiAddTableCount).offset = relativeOffset
                             multiAddTable(multiAddTableCount).multiplier = opValues(innerIdx)
                             multiAddTableCount = multiAddTableCount + 1
@@ -258,7 +265,8 @@ SUB ExecuteBrainfuck (sourceCode AS STRING, sourceName AS STRING)
     instructionCount = writePointer
 
     FOR charIndex = 0 TO instructionCount - 1
-        IF opCodes(charIndex) = OP_JZ OR opCodes(charIndex) = OP_JNZ THEN
+        commandByte = opCodes(charIndex)
+        IF commandByte = OP_JZ OR commandByte = OP_JNZ THEN
             IF indexMap(opValues(charIndex)) = -1 THEN ERROR _ERR_INTERNAL_ERROR
             opValues(charIndex) = indexMap(opValues(charIndex))
         END IF
@@ -266,81 +274,76 @@ SUB ExecuteBrainfuck (sourceCode AS STRING, sourceName AS STRING)
 
     _CONSOLETITLE sourceName
     
-    REDIM memoryBuffer(0 TO 1048575) AS _UNSIGNED _BYTE
-    DIM memoryHandle AS _MEM: memoryHandle = _MEM(memoryBuffer())
-    DIM memoryStartOffset AS _OFFSET: memoryStartOffset = memoryHandle.OFFSET
+    REDIM memoryBuffer(0 TO INITIAL_MEMORY_SIZE - 1) AS _UNSIGNED _BYTE
     DIM dataPointer AS LONG: dataPointer = 0
     DIM programPointer AS LONG: programPointer = 0
     DIM loopMultiplier AS LONG, scanStride AS LONG, tableBase AS LONG, entryCount AS LONG, tableIdx AS LONG
-    
+
     DO WHILE programPointer < instructionCount
         SELECT CASE opCodes(programPointer)
             CASE OP_ADD
-                _MEMPUT memoryHandle, memoryStartOffset + dataPointer, _MEMGET(memoryHandle, memoryStartOffset + dataPointer, _UNSIGNED _BYTE) + opValues(programPointer) AS _UNSIGNED _BYTE
+                memoryBuffer(dataPointer) = memoryBuffer(dataPointer) + opValues(programPointer)
 
             CASE OP_MOVE
                 dataPointer = dataPointer + opValues(programPointer)
                 IF dataPointer < 0 THEN ERROR _ERR_CANNOT_CONTINUE
-                IF dataPointer >= memoryHandle.SIZE THEN
-                    _MEMFREE memoryHandle
-                    REDIM _PRESERVE memoryBuffer(0 TO dataPointer + 1048576) AS _UNSIGNED _BYTE
-                    memoryHandle = _MEM(memoryBuffer())
-                    memoryStartOffset = memoryHandle.OFFSET
+                IF dataPointer > UBOUND(memoryBuffer) THEN
+                    REDIM _PRESERVE memoryBuffer(0 TO dataPointer + MEMORY_CHUNK_SIZE) AS _UNSIGNED _BYTE
                 END IF
 
             CASE OP_JZ
-                IF _MEMGET(memoryHandle, memoryStartOffset + dataPointer, _UNSIGNED _BYTE) = 0 THEN programPointer = opValues(programPointer)
+                IF memoryBuffer(dataPointer) = 0 THEN
+                    programPointer = opValues(programPointer)
+                    _CONTINUE
+                END IF
 
             CASE OP_JNZ
-                IF _MEMGET(memoryHandle, memoryStartOffset + dataPointer, _UNSIGNED _BYTE) <> 0 THEN programPointer = opValues(programPointer)
+                IF memoryBuffer(dataPointer) <> 0 THEN
+                    programPointer = opValues(programPointer)
+                    _CONTINUE
+                END IF
 
             CASE OP_SET
-                _MEMPUT memoryHandle, memoryStartOffset + dataPointer, opValues(programPointer) AS _UNSIGNED _BYTE
+                memoryBuffer(dataPointer) = opValues(programPointer)
 
             CASE OP_SCAN_ZERO
                 scanStride = opValues(programPointer)
-                DO WHILE _MEMGET(memoryHandle, memoryStartOffset + dataPointer, _UNSIGNED _BYTE) <> 0
+                DO WHILE memoryBuffer(dataPointer) <> 0
                     dataPointer = dataPointer + scanStride
                     IF dataPointer < 0 THEN ERROR _ERR_CANNOT_CONTINUE
-                    IF dataPointer >= memoryHandle.SIZE THEN
-                        _MEMFREE memoryHandle
-                        REDIM _PRESERVE memoryBuffer(0 TO dataPointer + 1048576) AS _UNSIGNED _BYTE
-                        memoryHandle = _MEM(memoryBuffer())
-                        memoryStartOffset = memoryHandle.OFFSET
+                    IF dataPointer > UBOUND(memoryBuffer) THEN
+                        REDIM _PRESERVE memoryBuffer(0 TO dataPointer + MEMORY_CHUNK_SIZE) AS _UNSIGNED _BYTE
                     END IF
                 LOOP
 
             CASE OP_ADD_REL_MULTI
-                loopMultiplier = _MEMGET(memoryHandle, memoryStartOffset + dataPointer, _UNSIGNED _BYTE)
+                loopMultiplier = memoryBuffer(dataPointer)
                 IF loopMultiplier <> 0 THEN
                     tableBase = opValues(programPointer)
                     entryCount = opAuxValues(programPointer)
                     FOR tableIdx = 0 TO entryCount - 1
                         DIM targetCellOffset AS LONG: targetCellOffset = dataPointer + multiAddTable(tableBase + tableIdx).offset
                         IF targetCellOffset < 0 THEN ERROR _ERR_CANNOT_CONTINUE
-                        IF targetCellOffset >= memoryHandle.SIZE THEN
-                            _MEMFREE memoryHandle
-                            REDIM _PRESERVE memoryBuffer(0 TO targetCellOffset + 1048576) AS _UNSIGNED _BYTE
-                            memoryHandle = _MEM(memoryBuffer())
-                            memoryStartOffset = memoryHandle.OFFSET
+                        IF targetCellOffset > UBOUND(memoryBuffer) THEN
+                            REDIM _PRESERVE memoryBuffer(0 TO targetCellOffset + MEMORY_CHUNK_SIZE) AS _UNSIGNED _BYTE
                         END IF
-                        _MEMPUT memoryHandle, memoryStartOffset + targetCellOffset, _MEMGET(memoryHandle, memoryStartOffset + targetCellOffset, _UNSIGNED _BYTE) + loopMultiplier * multiAddTable(tableBase + tableIdx).multiplier AS _UNSIGNED _BYTE
+                        memoryBuffer(targetCellOffset) = memoryBuffer(targetCellOffset) + loopMultiplier * multiAddTable(tableBase + tableIdx).multiplier
                     NEXT
                 END IF
 
             CASE OP_OUT
-                Console_WriteChar _MEMGET(memoryHandle, memoryStartOffset + dataPointer, _UNSIGNED _BYTE)
+                Console_WriteChar memoryBuffer(dataPointer)
 
             CASE OP_IN
                 _CONSOLETITLE "[WAITING FOR INPUT] " + sourceName
-                _MEMPUT memoryHandle, memoryStartOffset + dataPointer, Console_ReadChar AS _UNSIGNED _BYTE
+                memoryBuffer(dataPointer) = Console_ReadChar
                 _CONSOLETITLE sourceName
 
         END SELECT
         programPointer = programPointer + 1
     LOOP
-    _MEMFREE memoryHandle
 END SUB
 
+'$INCLUDE:'include/CLI/Args.bas'
 '$INCLUDE:'include/FS/Pathname.bas'
 '$INCLUDE:'include/IO/File.bas'
