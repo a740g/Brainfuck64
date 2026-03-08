@@ -6,8 +6,8 @@
 $CONSOLE:ONLY
 
 $LET TOOLBOX64_STRICT = TRUE
-'$INCLUDE:'include/Console/Console.bi'
 '$INCLUDE:'include/Core/PointerOps.bi'
+'$INCLUDE:'include/IO/Console.bi'
 '$INCLUDE:'include/IO/File.bi'
 
 $EXEICON:'./Brainfuck64.ico'
@@ -24,9 +24,7 @@ $VERSIONINFO:FILEVERSION#=1,1,0,0
 $VERSIONINFO:PRODUCTVERSION#=1,1,0,0
 
 CONST APP_NAME = "Brainfuck64"
-CONST INITIAL_MEMORY_SIZE = 30000
-CONST MEMORY_CHUNK_SIZE = 1048576
-
+CONST MEMORY_CHUNK_SIZE = 1024 * 1024
 CONST OP_ADD = 1
 CONST OP_MOVE = 2
 CONST OP_OUT = 3
@@ -289,7 +287,7 @@ FUNCTION CompactInstructions& (count AS LONG, codes() AS _UNSIGNED _BYTE, values
             mapping(i) = -1
         END IF
     NEXT
-    
+
     FOR i = 0 TO writeIdx - 1
         IF codes(i) = OP_JZ OR codes(i) = OP_JNZ THEN
             values(i) = mapping(values(i))
@@ -300,7 +298,7 @@ END FUNCTION
 
 SUB RunInterpreter (count AS LONG, codes() AS _UNSIGNED _BYTE, values() AS LONG, aux() AS LONG, table() AS RelativeAddition, programName AS STRING)
     _CONSOLETITLE programName
-    REDIM memory(0 TO INITIAL_MEMORY_SIZE - 1) AS _UNSIGNED _BYTE
+    REDIM memory(0 TO MEMORY_CHUNK_SIZE - 1) AS _UNSIGNED _BYTE
     DIM dataPtr AS LONG
     DIM pc AS LONG
     DIM mult AS LONG, stride AS LONG, irTableBase AS LONG, entries AS LONG, i AS LONG, target AS LONG
@@ -369,5 +367,3 @@ SUB RunInterpreter (count AS LONG, codes() AS _UNSIGNED _BYTE, values() AS LONG,
         pc = pc + 1
     LOOP
 END SUB
-
-'$INCLUDE:'include/IO/File.bas'
