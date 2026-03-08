@@ -72,10 +72,10 @@ jobs:
           cd "$SETUP_DIR"
           if [[ "${{ runner.os }}" == "Linux" ]]; then
             chmod +x setup_lnx.sh
-            ./setup_lnx.sh
+            ./setup_lnx.sh 1
           else
             chmod +x setup_osx.command
-            ./setup_osx.command
+            ./setup_osx.command 1
           fi
           echo "QB64PE_BIN_DIR=$(pwd)" >> $GITHUB_ENV
 
