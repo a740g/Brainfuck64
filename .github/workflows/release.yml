@@ -61,7 +61,18 @@ jobs:
         if: runner.os != 'Windows'
         run: |
           mkdir qb64pe
-          tar -xzf qb64_dl/*.tar.gz -C qb64pe --strip-components=1
+          tar -xzf qb64_dl/*.tar.gz -C qb64pe
+          # Find the setup script and move everything from its directory to qb64pe root
+          SETUP_PATH=$(find qb64pe -name "setup_lnx.sh" -o -name "setup_osx.command" | head -n 1)
+          if [ -z "$SETUP_PATH" ]; then
+            echo "Error: Setup script not found in tarball."
+            ls -R qb64pe
+            exit 1
+          fi
+          SETUP_DIR=$(dirname "$SETUP_PATH")
+          if [ "$SETUP_DIR" != "qb64pe" ]; then
+            mv "$SETUP_DIR"/* qb64pe/
+          fi
           cd qb64pe
           if [[ "${{ runner.os }}" == "Linux" ]]; then
             chmod +x setup_lnx.sh
