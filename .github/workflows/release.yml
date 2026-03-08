@@ -45,12 +45,6 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Install dependencies (Linux)
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libasound2-dev libglu1-mesa-dev freeglut3-dev mesa-common-dev libx11-dev libxext-dev zip
-
       - name: Download QB64-PE
         env:
           GH_TOKEN: ${{ github.token }}
@@ -71,6 +65,7 @@ jobs:
           SETUP_DIR=$(dirname "$SETUP_PATH")
           cd "$SETUP_DIR"
           if [[ "${{ runner.os }}" == "Linux" ]]; then
+            sudo apt-get update
             chmod +x setup_lnx.sh
             ./setup_lnx.sh 1
           else
