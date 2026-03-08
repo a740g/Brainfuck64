@@ -7,7 +7,7 @@ on:
 
 jobs:
   build-release:
-    name: Build Release (${{ matrix.os }})
+    name: Build Release (${{ matrix.name }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -52,19 +52,19 @@ jobs:
           sudo apt-get install -y libasound2-dev libglu1-mesa-dev freeglut3-dev mesa-common-dev libx11-dev libxext-dev zip
 
       - name: Download QB64-PE
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
-          gh release download latest -R QB64-Phoenix-Edition/QB64pe -p "${{ matrix.asset_pattern }}" --dir qb64_dl
+          gh release download -R QB64-Phoenix-Edition/QB64pe -p "${{ matrix.asset_pattern }}" --dir qb64_dl
 
       - name: Extract QB64-PE (Unix)
         if: runner.os != 'Windows'
         run: |
           mkdir qb64pe
           tar -xzf qb64_dl/*.tar.gz -C qb64pe --strip-components=1
+          chmod +x qb64pe/qb64pe
 
       - name: Extract QB64-PE (Windows)
         if: runner.os == 'Windows'
+        shell: pwsh
         run: |
           7z x qb64_dl/*.7z -oqb64pe
           $subFolder = Get-ChildItem -Path qb64pe -Directory | Select-Object -First 1
@@ -75,8 +75,13 @@ jobs:
       - name: Build
         shell: bash
         run: |
-          export QB64PE_PATH=$(pwd)/qb64pe
-          make
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            export QB64PE_PATH=$(pwd -W)/qb64pe
+            mingw32-make
+          else
+            export QB64PE_PATH=$(pwd)/qb64pe
+            make
+          fi
 
       - name: Package (Unix)
         if: runner.os != 'Windows'
