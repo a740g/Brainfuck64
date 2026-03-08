@@ -20,18 +20,23 @@ jobs:
           - name: Linux-x64
             os: ubuntu-latest
             asset_pattern: "qb64pe_lnx-*.tar.gz"
+            bin_name: Brainfuck64
           - name: Windows-x64
             os: windows-latest
             asset_pattern: "qb64pe_win-x64-*.7z"
+            bin_name: Brainfuck64.exe
           - name: Windows-x86
             os: windows-latest
             asset_pattern: "qb64pe_win-x86-*.7z"
+            bin_name: Brainfuck64.exe
           - name: Windows-arm64
             os: windows-11-arm
             asset_pattern: "qb64pe_win-arm64-*.7z"
+            bin_name: Brainfuck64.exe
           - name: macOS-x64
             os: macos-latest
             asset_pattern: "qb64pe_osx-*.tar.gz"
+            bin_name: Brainfuck64
 
     steps:
       - name: Checkout code
@@ -51,12 +56,19 @@ jobs:
         run: |
           gh release download -R QB64-Phoenix-Edition/QB64pe -p "${{ matrix.asset_pattern }}" --dir qb64_dl
 
-      - name: Extract QB64-PE (Unix)
+      - name: Extract & Setup QB64-PE (Unix)
         if: runner.os != 'Windows'
         run: |
           mkdir qb64pe
           tar -xzf qb64_dl/*.tar.gz -C qb64pe --strip-components=1
-          chmod +x qb64pe/qb64pe
+          cd qb64pe
+          if [[ "${{ runner.os }}" == "Linux" ]]; then
+            chmod +x setup_lnx.sh
+            ./setup_lnx.sh
+          else
+            chmod +x setup_osx.command
+            ./setup_osx.command
+          fi
 
       - name: Extract QB64-PE (Windows)
         if: runner.os == 'Windows'
@@ -71,7 +83,6 @@ jobs:
       - name: Build and Test
         shell: bash
         run: |
-          # Use native paths for Windows to avoid issues with QB64-PE
           if [[ "${{ runner.os }}" == "Windows" ]]; then
             export QB64PE_PATH=$(pwd -W)/qb64pe
             mingw32-make test
@@ -79,3 +90,10 @@ jobs:
             export QB64PE_PATH=$(pwd)/qb64pe
             make test
           fi
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}-bin
+          path: ${{ matrix.bin_name }}
+          if-no-files-found: error
