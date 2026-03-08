@@ -101,21 +101,32 @@ jobs:
             make
           fi
 
-      - name: Package (Unix)
-        if: runner.os != 'Windows'
-        run: |
-          zip -r ${{ matrix.archive_name }} . -x ".git/*" ".github/*" "tests/*" "qb64_dl/*" "qb64_src/*" "*.o" "*.obj" "*.a" "*.lib" "Makefile"
-
-      - name: Package (Windows)
-        if: runner.os == 'Windows'
+      - name: Package
         shell: bash
         run: |
-          7z a -tzip "${{ matrix.archive_name }}" . -xr'!.git' -xr'!.github' -xr'!tests' -xr'!qb64_dl' -xr'!qb64_src' -x'#*.o' -x'!*.obj' -x'!.a' -x'!*.lib' -x'!.Makefile'
+          mkdir staging
+          # Explicitly copy only allowed items
+          cp -r demos include Brainfuck64.bas LICENSE.txt README.md staging/
+          cp ${{ matrix.bin_name }} staging/
+          if [ -f Brainfuck64.ico ]; then
+            cp Brainfuck64.ico staging/
+          fi
+          # Clean up any git metadata from submodules
+          find staging -name ".git*" -exec rm -rf {} +
+
+          cd staging
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            7z a -tzip "../${{ matrix.archive_name }}" *
+          else
+            zip -r "../${{ matrix.archive_name }}" .
+          fi
+          cd ..
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.archive_name }}
+          # Use a unique name without .zip to avoid zip-in-zip confusion in the Actions UI
+          name: asset-${{ matrix.name }}
           path: ${{ matrix.archive_name }}
 
   create-release:
@@ -129,6 +140,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: artifacts
+          pattern: "asset-*"
           merge-multiple: true
 
       - name: Create Release
