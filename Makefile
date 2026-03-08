@@ -56,7 +56,8 @@ test: all
 ifeq ($(OS),Windows_NT)
 	powershell.exe -NoProfile -ExecutionPolicy Bypass -File tests/tests.ps1
 else
-	@echo "Tests not implemented for this OS yet."
+	chmod +x tests/tests.sh
+	./tests/tests.sh
 endif
 
 clean:
