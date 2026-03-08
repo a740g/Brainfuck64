@@ -8,7 +8,6 @@ $CONSOLE:ONLY
 $LET TOOLBOX64_STRICT = TRUE
 '$INCLUDE:'include/Console/Console.bi'
 '$INCLUDE:'include/Core/PointerOps.bi'
-'$INCLUDE:'include/FS/Pathname.bi'
 '$INCLUDE:'include/IO/File.bi'
 
 $EXEICON:'./Brainfuck64.ico'
@@ -82,21 +81,21 @@ SYSTEM
 
 SUB ExecuteBrainfuck (sourceCode AS STRING, sourceName AS STRING)
     DIM cleanedCode AS STRING: cleanedCode = GetCleanedCode(sourceCode)
-    
+
     DIM initialCapacity AS LONG: initialCapacity = LEN(cleanedCode)
     REDIM opCodes(0 TO initialCapacity) AS _UNSIGNED _BYTE
     REDIM opValues(0 TO initialCapacity) AS LONG
     REDIM opAuxValues(0 TO initialCapacity) AS LONG
-    
+
     DIM instructionCount AS LONG: instructionCount = GenerateInitialIR(cleanedCode, opCodes(), opValues())
-    
+
     ResolveJumps instructionCount, opCodes(), opValues()
-    
+
     REDIM multiAddTable(0 TO instructionCount * 2) AS RelativeAddition
     DIM multiAddCount AS LONG: multiAddCount = OptimizePatterns(instructionCount, opCodes(), opValues(), opAuxValues(), multiAddTable())
-    
+
     instructionCount = CompactInstructions(instructionCount, opCodes(), opValues(), opAuxValues())
-    
+
     RunInterpreter instructionCount, opCodes(), opValues(), opAuxValues(), multiAddTable(), sourceName
 END SUB
 
@@ -104,7 +103,7 @@ FUNCTION GetCleanedCode$ (source AS STRING)
     _CONSOLETITLE "Cleaning code..."
     DIM length AS LONG: length = LEN(source)
     DIM buffer AS STRING: buffer = SPACE$(length)
-    DIM writeIdx AS LONG: writeIdx = 0
+    DIM writeIdx AS LONG
     DIM i AS LONG, char AS LONG
 
     FOR i = 0 TO length - 1
@@ -121,8 +120,8 @@ END FUNCTION
 FUNCTION GenerateInitialIR& (source AS STRING, codes() AS _UNSIGNED _BYTE, values() AS LONG)
     _CONSOLETITLE "Generating IR..."
     DIM length AS LONG: length = LEN(source)
-    DIM count AS LONG: count = 0
-    DIM i AS LONG: i = 0
+    DIM count AS LONG
+    DIM i AS LONG
     DIM char AS LONG
 
     WHILE i < length
@@ -208,7 +207,7 @@ END FUNCTION
 SUB ResolveJumps (count AS LONG, codes() AS _UNSIGNED _BYTE, values() AS LONG)
     _CONSOLETITLE "Linking jumps..."
     REDIM stack(0 TO count) AS LONG
-    DIM ptr AS LONG: ptr = 0
+    DIM ptr AS LONG
     DIM i AS LONG
     FOR i = 0 TO count - 1
         IF codes(i) = OP_JZ THEN
@@ -227,7 +226,7 @@ END SUB
 
 FUNCTION OptimizePatterns& (count AS LONG, codes() AS _UNSIGNED _BYTE, values() AS LONG, aux() AS LONG, table() AS RelativeAddition)
     _CONSOLETITLE "Optimizing patterns..."
-    DIM tableIdx AS LONG: tableIdx = 0
+    DIM tableIdx AS LONG
     DIM i AS LONG, k AS LONG, offset AS LONG, ok AS LONG, entries AS LONG
 
     FOR i = 0 TO count - 1
@@ -276,7 +275,7 @@ END FUNCTION
 
 FUNCTION CompactInstructions& (count AS LONG, codes() AS _UNSIGNED _BYTE, values() AS LONG, aux() AS LONG)
     _CONSOLETITLE "Compacting IR..."
-    DIM writeIdx AS LONG: writeIdx = 0
+    DIM writeIdx AS LONG
     REDIM mapping(0 TO count) AS LONG
     DIM i AS LONG
     FOR i = 0 TO count - 1
@@ -302,8 +301,8 @@ END FUNCTION
 SUB RunInterpreter (count AS LONG, codes() AS _UNSIGNED _BYTE, values() AS LONG, aux() AS LONG, table() AS RelativeAddition, programName AS STRING)
     _CONSOLETITLE programName
     REDIM memory(0 TO INITIAL_MEMORY_SIZE - 1) AS _UNSIGNED _BYTE
-    DIM dataPtr AS LONG: dataPtr = 0
-    DIM pc AS LONG: pc = 0
+    DIM dataPtr AS LONG
+    DIM pc AS LONG
     DIM mult AS LONG, stride AS LONG, irTableBase AS LONG, entries AS LONG, i AS LONG, target AS LONG
 
     DO WHILE pc < count
@@ -371,6 +370,4 @@ SUB RunInterpreter (count AS LONG, codes() AS _UNSIGNED _BYTE, values() AS LONG,
     LOOP
 END SUB
 
-'$INCLUDE:'include/CLI/Args.bas'
-'$INCLUDE:'include/FS/Pathname.bas'
 '$INCLUDE:'include/IO/File.bas'
