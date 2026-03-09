@@ -43,6 +43,10 @@ $(info Using QB64PE from: $(QB64PE))
 
 QB64PE_FLAGS := -x -w -e
 
+ifeq ($(OS),Windows_NT)
+	QB64PE_FLAGS += -f:OptimizeCppProgram=true
+endif
+
 APP_EXECUTABLE := Brainfuck64$(EXTENSION)
 
 .PHONY: all test clean
