@@ -7,6 +7,7 @@ $CONSOLE:ONLY
 
 $LET TOOLBOX64_STRICT = TRUE
 '$INCLUDE:'include/Core/PointerOps.bi'
+'$INCLUDE:'include/CLI/Args.bi'
 '$INCLUDE:'include/FS/Pathname.bi'
 '$INCLUDE:'include/IO/Console.bi'
 '$INCLUDE:'include/IO/File.bi'
@@ -21,8 +22,8 @@ $VERSIONINFO:Comments='https://github.com/a740g'
 $VERSIONINFO:InternalName='Brainfuck64'
 $VERSIONINFO:OriginalFilename='Brainfuck64.exe'
 $VERSIONINFO:FileDescription='Brainfuck64 executable'
-$VERSIONINFO:FILEVERSION#=1,1,5,0
-$VERSIONINFO:PRODUCTVERSION#=1,1,5,0
+$VERSIONINFO:FILEVERSION#=1,1,6,0
+$VERSIONINFO:PRODUCTVERSION#=1,1,6,0
 
 CONST APP_NAME = "Brainfuck64"
 CONST MEMORY_CHUNK_SIZE = 1024 * 1024
@@ -48,7 +49,7 @@ CHDIR _STARTDIR$
 
 DIM isInteractive AS _BYTE
 
-IF _COMMANDCOUNT < 1 THEN
+IF _COMMANDCOUNT < 1 _ORELSE Args_GetArgumentIndex("help") > 0 THEN
     isInteractive = _TRUE
 
     Console_WriteLine _STR_EMPTY
@@ -59,10 +60,10 @@ IF _COMMANDCOUNT < 1 THEN
     Console_WriteLine _STR_EMPTY
     Console_WriteLine "Usage: Brainfuck64 [program1.bf] [program2.bf] ..."
     Console_WriteLine _STR_EMPTY
-    Console_WriteLine "Note:"
-    Console_WriteLine " * Wildcards (*, ?) are supported"
-    Console_WriteLine " * URLs are supported"
-    Console_WriteLine " * On Windows, use Terminal for best results"
+    Console_WriteLine "Notes:"
+    Console_WriteLine " * Wildcards (* and ?) are supported for file names."
+    Console_WriteLine " * HTTP/HTTPS URLs are supported for remote programs."
+    Console_WriteLine " * On Windows, use Windows Terminal for the best experience."
     Console_WriteLine _STR_EMPTY
 
     DO
@@ -95,7 +96,7 @@ ELSE
     IF errorLine = 0 THEN errorLine = ERL
 
     errorFile = _INCLERRORFILE$
-    IF LEN(errorFile) = 0 THEN errorFile = "main module"
+    IF LEN(errorFile) = 0 THEN errorFile = Pathname_RemoveFileExtension(Pathname_GetFileName(Args_GetExecutablePathName)) + ".bas"
 END IF
 
 Console_WriteLine _STR_EMPTY
