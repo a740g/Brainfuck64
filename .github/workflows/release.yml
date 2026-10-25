@@ -17,7 +17,7 @@ jobs:
             os: ubuntu-latest
             asset_pattern: "qb64pe_lnx-*.tar.gz"
             bin_name: Brainfuck64
-            archive_name: Brainfuck64-linux-x64.zip
+            archive_name: Brainfuck64-linux-x64.tar.gz
           - name: Windows-x64
             os: windows-latest
             asset_pattern: "qb64pe_win-x64-*.7z"
@@ -32,7 +32,7 @@ jobs:
             os: macos-latest
             asset_pattern: "qb64pe_osx-*.tar.gz"
             bin_name: Brainfuck64
-            archive_name: Brainfuck64-macos-arm64.zip
+            archive_name: Brainfuck64-macos-arm64.tar.gz
 
     steps:
       - name: Checkout code
@@ -101,6 +101,9 @@ jobs:
           if [ -f Brainfuck64.ico ]; then
             cp Brainfuck64.ico staging/
           fi
+          if [[ "${{ runner.os }}" != "Windows" ]]; then
+            chmod +x staging/${{ matrix.bin_name }}
+          fi
           # Clean up any git metadata from submodules
           find staging -name ".git*" -exec rm -rf {} +
 
@@ -108,7 +111,7 @@ jobs:
           if [[ "${{ runner.os }}" == "Windows" ]]; then
             7z a -tzip "../${{ matrix.archive_name }}" *
           else
-            zip -r "../${{ matrix.archive_name }}" .
+            tar -czf "../${{ matrix.archive_name }}" .
           fi
           cd ..
 

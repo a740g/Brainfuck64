@@ -1,6 +1,6 @@
 '-----------------------------------------------------------------------------------------------------------------------
 ' QB64-PE Brainfuck interpreter
-' Copyright (c) 2025 Samuel Gomes
+' Copyright (c) 2026 Samuel Gomes
 '-----------------------------------------------------------------------------------------------------------------------
 
 $CONSOLE:ONLY
@@ -15,15 +15,15 @@ $LET TOOLBOX64_STRICT = TRUE
 $EXEICON:'./Brainfuck64.ico'
 $VERSIONINFO:ProductName='Brainfuck64'
 $VERSIONINFO:CompanyName='Samuel Gomes'
-$VERSIONINFO:LegalCopyright='Copyright (c) 2025 Samuel Gomes'
+$VERSIONINFO:LegalCopyright='Copyright (c) 2026 Samuel Gomes'
 $VERSIONINFO:LegalTrademarks='All trademarks are property of their respective owners'
 $VERSIONINFO:Web='https://github.com/a740g'
 $VERSIONINFO:Comments='https://github.com/a740g'
 $VERSIONINFO:InternalName='Brainfuck64'
 $VERSIONINFO:OriginalFilename='Brainfuck64.exe'
 $VERSIONINFO:FileDescription='Brainfuck64 executable'
-$VERSIONINFO:FILEVERSION#=1,1,6,0
-$VERSIONINFO:PRODUCTVERSION#=1,1,6,0
+$VERSIONINFO:FILEVERSION#=1,1,7,0
+$VERSIONINFO:PRODUCTVERSION#=1,1,7,0
 
 CONST APP_NAME = "Brainfuck64"
 CONST MEMORY_CHUNK_SIZE = 1024 * 1024
@@ -54,7 +54,7 @@ IF _COMMANDCOUNT < 1 _ORELSE Args_GetArgumentIndex("help") > 0 THEN
 
     Console_WriteLine _STR_EMPTY
     Console_WriteLine "Brainfuck64: A Brainfuck interpreter written in QB64-PE"
-    Console_WriteLine "Copyright (c) 2025 Samuel Gomes"
+    Console_WriteLine "Copyright (c) 2026 Samuel Gomes"
     Console_WriteLine _STR_EMPTY
     Console_WriteLine "https://github.com/a740g"
     Console_WriteLine _STR_EMPTY
