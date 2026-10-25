@@ -19,7 +19,7 @@ jobs:
         include:
           - name: Linux-x64
             os: ubuntu-latest
-            asset_pattern: "qb64pe_lnx-*.tar.gz"
+            asset_pattern: "qb64pe_lnx-x64-*.tar.gz"
             bin_name: Brainfuck64
           - name: Windows-x64
             os: windows-latest
