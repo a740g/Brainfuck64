@@ -5,12 +5,14 @@
 
 $CONSOLE:ONLY
 
-$LET TOOLBOX64_STRICT = TRUE
-'$INCLUDE:'include/Core/PointerOps.bi'
-'$INCLUDE:'include/CLI/Args.bi'
-'$INCLUDE:'include/FS/Pathname.bi'
-'$INCLUDE:'include/IO/Console.bi'
-'$INCLUDE:'include/IO/File.bi'
+_DEFINE A-Z AS LONG
+OPTION _EXPLICIT
+'$STATIC
+OPTION BASE 1
+
+'$INCLUDE:'Args.bi'
+'$INCLUDE:'Pathname.bi'
+'$INCLUDE:'File.bi'
 
 $EXEICON:'./Brainfuck64.ico'
 $VERSIONINFO:ProductName='Brainfuck64'
@@ -43,70 +45,10 @@ TYPE RelativeAddition
     multiplier AS LONG
 END TYPE
 
-ON ERROR GOTO error_handler
-
-CHDIR _STARTDIR$
-
-DIM isInteractive AS _BYTE
-
-IF _COMMANDCOUNT < 1 _ORELSE Args_GetArgumentIndex("help") > 0 THEN
-    isInteractive = _TRUE
-
-    Console_WriteLine _STR_EMPTY
-    Console_WriteLine "Brainfuck64: A Brainfuck interpreter written in QB64-PE"
-    Console_WriteLine "Copyright (c) 2026 Samuel Gomes"
-    Console_WriteLine _STR_EMPTY
-    Console_WriteLine "https://github.com/a740g"
-    Console_WriteLine _STR_EMPTY
-    Console_WriteLine "Usage: Brainfuck64 [program1.bf] [program2.bf] ..."
-    Console_WriteLine _STR_EMPTY
-    Console_WriteLine "Notes:"
-    Console_WriteLine " * Wildcards (* and ?) are supported for file names."
-    Console_WriteLine " * HTTP/HTTPS URLs are supported for remote programs."
-    Console_WriteLine " * On Windows, use Windows Terminal for the best experience."
-    Console_WriteLine _STR_EMPTY
-
-    DO
-        DIM selectedFile AS STRING: selectedFile = _OPENFILEDIALOG$("Open Brainfuck File", , "*.bf|*.BF|*.Bf|*.bF", "Brainfuck files")
-
-        IF LEN(selectedFile) THEN
-            Console_WriteLine _STR_EMPTY
-            Brainfuck_Execute File_Load(selectedFile), Pathname_GetFileName(selectedFile)
-        END IF
-    LOOP WHILE LEN(selectedFile)
-ELSE
-    DIM argIndex AS LONG
-    FOR argIndex = 1 TO _COMMANDCOUNT
-        Brainfuck_Execute File_Load(COMMAND$(argIndex)), Pathname_GetFileName(COMMAND$(argIndex))
-
-        IF argIndex < _COMMANDCOUNT THEN Console_WriteLine _STR_EMPTY
-    NEXT
-END IF
-
-SYSTEM
-
-error_handler:
-DIM errorLine AS _UNSIGNED _INTEGER64: errorLine = _INCLERRORLINE
-DIM errorFile AS STRING
-
-IF errorLine THEN
-    errorFile = _INCLERRORFILE$
-ELSE
-    errorLine = _ERRORLINE
-    IF errorLine = 0 THEN errorLine = ERL
-
-    errorFile = _INCLERRORFILE$
-    IF LEN(errorFile) = 0 THEN errorFile = Pathname_RemoveFileExtension(Pathname_GetFileName(Args_GetExecutablePathName)) + ".bas"
-END IF
-
-Console_WriteLine _STR_EMPTY
-Console_WriteLine "Runtime error" + STR$(ERR) + " (" + LCASE$(_ERRORMESSAGE$) + ") on line" + STR$(errorLine) + " in " + errorFile
-
-IF isInteractive THEN
-    END ERR
-ELSE
-    SYSTEM ERR
-END IF
+DECLARE LIBRARY
+    FUNCTION Console_ReadChar& ALIAS "::getchar"
+    SUB Console_WriteChar ALIAS "::putchar" (BYVAL ch AS LONG)
+END DECLARE
 
 SUB Brainfuck_Execute (sourceCode AS STRING, sourceName AS STRING)
     DIM cleanedCode AS STRING: cleanedCode = Brainfuck_GetCleanedCode(sourceCode)
@@ -136,17 +78,15 @@ FUNCTION Brainfuck_GetCleanedCode$ (source AS STRING)
     DIM char AS _UNSIGNED _BYTE
     DIM AS LONG i, writeIdx
 
-    WHILE i < length
-        char = PeekStringByte(source, i)
+    FOR i = 1 TO length
+        char = ASC(source, i)
 
         SELECT CASE char
             CASE _ASC_GREATERTHAN, _ASC_LESSTHAN, _ASC_PLUS, _ASC_MINUS, _ASC_FULLSTOP, _ASC_COMMA, _ASC_LEFTSQUAREBRACKET, _ASC_RIGHTSQUAREBRACKET
-                PokeStringByte buffer, writeIdx, char
                 writeIdx = writeIdx + 1
+                ASC(buffer, writeIdx) = char
         END SELECT
-
-        i = i + 1
-    WEND
+    NEXT i
 
     Brainfuck_GetCleanedCode = LEFT$(buffer, writeIdx)
 END FUNCTION
@@ -159,14 +99,14 @@ FUNCTION Brainfuck_GenerateInitialIR& (source AS STRING, codes() AS _UNSIGNED _B
     DIM AS LONG i, count
 
     WHILE i < length
-        char = PeekStringByte(source, i)
+        char = ASC(source, i + 1)
 
         SELECT CASE char
             CASE _ASC_PLUS, _ASC_MINUS
                 DIM delta AS LONG: delta = 0
 
                 DO WHILE i < length
-                    char = PeekStringByte(source, i)
+                    char = ASC(source, i + 1)
                     IF char = _ASC_PLUS THEN
                         delta = delta + 1
                     ELSEIF char = _ASC_MINUS THEN
@@ -189,7 +129,7 @@ FUNCTION Brainfuck_GenerateInitialIR& (source AS STRING, codes() AS _UNSIGNED _B
                 DIM move AS LONG: move = 0
 
                 DO WHILE i < length
-                    char = PeekStringByte(source, i)
+                    char = ASC(source, i + 1)
                     IF char = _ASC_GREATERTHAN THEN
                         move = move + 1
                     ELSEIF char = _ASC_LESSTHAN THEN
@@ -212,8 +152,8 @@ FUNCTION Brainfuck_GenerateInitialIR& (source AS STRING, codes() AS _UNSIGNED _B
                 DIM handled AS LONG: handled = _FALSE
 
                 IF i + 2 < length THEN
-                    DIM next1 AS _UNSIGNED _BYTE: next1 = PeekStringByte(source, i + 1)
-                    DIM next2 AS _UNSIGNED _BYTE: next2 = PeekStringByte(source, i + 2)
+                    DIM next1 AS _UNSIGNED _BYTE: next1 = ASC(source, i + 2)
+                    DIM next2 AS _UNSIGNED _BYTE: next2 = ASC(source, i + 3)
                     IF (next1 = _ASC_MINUS _ORELSE next1 = _ASC_PLUS) _ANDALSO next2 = _ASC_RIGHTSQUAREBRACKET THEN
                         codes(count) = OP_SET
                         values(count) = 0
@@ -446,3 +386,70 @@ SUB Brainfuck_RunInterpreter (count AS LONG, codes() AS _UNSIGNED _BYTE, values(
         pc = pc + 1
     WEND
 END SUB
+
+' ENTRY POINT
+
+ON ERROR GOTO error_handler
+
+CHDIR _STARTDIR$
+
+DIM isInteractive AS _BYTE
+
+IF _COMMANDCOUNT < 1 _ORELSE Args_GetArgumentIndex("help") > 0 THEN
+    isInteractive = _TRUE
+
+    _ECHO _STR_EMPTY
+    _ECHO "Brainfuck64: A Brainfuck interpreter written in QB64-PE"
+    _ECHO "Copyright (c) 2026 Samuel Gomes"
+    _ECHO _STR_EMPTY
+    _ECHO "https://github.com/a740g"
+    _ECHO _STR_EMPTY
+    _ECHO "Usage: Brainfuck64 [program1.bf] [program2.bf] ..."
+    _ECHO _STR_EMPTY
+    _ECHO "Notes:"
+    _ECHO " * Wildcards (* and ?) are supported for file names."
+    _ECHO " * HTTP/HTTPS URLs are supported for remote programs."
+    _ECHO " * On Windows, use Windows Terminal for the best experience."
+    _ECHO _STR_EMPTY
+
+    DO
+        DIM selectedFile AS STRING: selectedFile = _OPENFILEDIALOG$("Open Brainfuck File", , "*.bf|*.BF|*.Bf|*.bF", "Brainfuck files")
+
+        IF LEN(selectedFile) THEN
+            _ECHO _STR_EMPTY
+            Brainfuck_Execute File_Load(selectedFile), Pathname_GetFileName(selectedFile)
+        END IF
+    LOOP WHILE LEN(selectedFile)
+ELSE
+    DIM argIndex AS LONG
+    FOR argIndex = 1 TO _COMMANDCOUNT
+        Brainfuck_Execute File_Load(COMMAND$(argIndex)), Pathname_GetFileName(COMMAND$(argIndex))
+
+        IF argIndex < _COMMANDCOUNT THEN _ECHO _STR_EMPTY
+    NEXT
+END IF
+
+SYSTEM
+
+error_handler:
+DIM errorLine AS _UNSIGNED _INTEGER64: errorLine = _INCLERRORLINE
+DIM errorFile AS STRING
+
+IF errorLine THEN
+    errorFile = _INCLERRORFILE$
+ELSE
+    errorLine = _ERRORLINE
+    IF errorLine = 0 THEN errorLine = ERL
+
+    errorFile = _INCLERRORFILE$
+    IF LEN(errorFile) = 0 THEN errorFile = Pathname_RemoveFileExtension(Pathname_GetFileName(Args_GetExecutablePathName)) + ".bas"
+END IF
+
+_ECHO _STR_EMPTY
+_ECHO "Runtime error" + STR$(ERR) + " (" + LCASE$(_ERRORMESSAGE$) + ") on line" + STR$(errorLine) + " in " + errorFile
+
+IF isInteractive THEN
+    END ERR
+ELSE
+    SYSTEM ERR
+END IF
