@@ -10,7 +10,6 @@ OPTION _EXPLICIT
 '$STATIC
 OPTION BASE 1
 
-'$INCLUDE:'Args.bi'
 '$INCLUDE:'Pathname.bi'
 '$INCLUDE:'File.bi'
 
@@ -395,7 +394,7 @@ CHDIR _STARTDIR$
 
 DIM isInteractive AS _BYTE
 
-IF _COMMANDCOUNT < 1 _ORELSE Args_GetArgumentIndex("help") > 0 THEN
+IF _COMMANDCOUNT < 1 THEN
     isInteractive = _TRUE
 
     _ECHO _STR_EMPTY
@@ -442,7 +441,7 @@ ELSE
     IF errorLine = 0 THEN errorLine = ERL
 
     errorFile = _INCLERRORFILE$
-    IF LEN(errorFile) = 0 THEN errorFile = Pathname_RemoveFileExtension(Pathname_GetFileName(Args_GetExecutablePathName)) + ".bas"
+    IF LEN(errorFile) = 0 THEN errorFile = Pathname_RemoveFileExtension(Pathname_GetFileName(COMMAND$(0))) + ".bas"
 END IF
 
 _ECHO _STR_EMPTY
