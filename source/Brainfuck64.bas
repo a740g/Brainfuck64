@@ -12,6 +12,7 @@ OPTION BASE 1
 
 '$INCLUDE:'Pathname.bi'
 '$INCLUDE:'File.bi'
+'$INCLUDE:'Console.bi'
 
 $EXEICON:'./Brainfuck64.ico'
 $VERSIONINFO:ProductName='Brainfuck64'
@@ -43,11 +44,6 @@ TYPE RelativeAddition
     offset AS LONG
     multiplier AS LONG
 END TYPE
-
-DECLARE LIBRARY
-    FUNCTION Console_ReadChar& ALIAS "::getchar"
-    SUB Console_WriteChar ALIAS "::putchar" (BYVAL ch AS LONG)
-END DECLARE
 
 SUB Brainfuck_Execute (sourceCode AS STRING, sourceName AS STRING)
     DIM cleanedCode AS STRING: cleanedCode = Brainfuck_GetCleanedCode(sourceCode)
@@ -397,25 +393,25 @@ DIM isInteractive AS _BYTE
 IF _COMMANDCOUNT < 1 THEN
     isInteractive = _TRUE
 
-    _ECHO _STR_EMPTY
-    _ECHO "Brainfuck64: A Brainfuck interpreter written in QB64-PE"
-    _ECHO "Copyright (c) 2026 Samuel Gomes"
-    _ECHO _STR_EMPTY
-    _ECHO "https://github.com/a740g"
-    _ECHO _STR_EMPTY
-    _ECHO "Usage: Brainfuck64 [program1.bf] [program2.bf] ..."
-    _ECHO _STR_EMPTY
-    _ECHO "Notes:"
-    _ECHO " * Wildcards (* and ?) are supported for file names."
-    _ECHO " * HTTP/HTTPS URLs are supported for remote programs."
-    _ECHO " * On Windows, use Windows Terminal for the best experience."
-    _ECHO _STR_EMPTY
+    Console_WriteLine _STR_EMPTY
+    Console_WriteLine "Brainfuck64: A Brainfuck interpreter written in QB64-PE"
+    Console_WriteLine "Copyright (c) 2026 Samuel Gomes"
+    Console_WriteLine _STR_EMPTY
+    Console_WriteLine "https://github.com/a740g"
+    Console_WriteLine _STR_EMPTY
+    Console_WriteLine "Usage: Brainfuck64 [program1.bf] [program2.bf] ..."
+    Console_WriteLine _STR_EMPTY
+    Console_WriteLine "Notes:"
+    Console_WriteLine " * Wildcards (* and ?) are supported for file names."
+    Console_WriteLine " * HTTP/HTTPS URLs are supported for remote programs."
+    Console_WriteLine " * On Windows, use Windows Terminal for the best experience."
+    Console_WriteLine _STR_EMPTY
 
     DO
         DIM selectedFile AS STRING: selectedFile = _OPENFILEDIALOG$("Open Brainfuck File", , "*.bf|*.BF|*.Bf|*.bF", "Brainfuck files")
 
         IF LEN(selectedFile) THEN
-            _ECHO _STR_EMPTY
+            Console_WriteLine _STR_EMPTY
             Brainfuck_Execute File_Load(selectedFile), Pathname_GetFileName(selectedFile)
         END IF
     LOOP WHILE LEN(selectedFile)
@@ -424,7 +420,7 @@ ELSE
     FOR argIndex = 1 TO _COMMANDCOUNT
         Brainfuck_Execute File_Load(COMMAND$(argIndex)), Pathname_GetFileName(COMMAND$(argIndex))
 
-        IF argIndex < _COMMANDCOUNT THEN _ECHO _STR_EMPTY
+        IF argIndex < _COMMANDCOUNT THEN Console_WriteLine _STR_EMPTY
     NEXT
 END IF
 
@@ -444,8 +440,8 @@ ELSE
     IF LEN(errorFile) = 0 THEN errorFile = Pathname_RemoveFileExtension(Pathname_GetFileName(COMMAND$(0))) + ".bas"
 END IF
 
-_ECHO _STR_EMPTY
-_ECHO "Runtime error" + STR$(ERR) + " (" + LCASE$(_ERRORMESSAGE$) + ") on line" + STR$(errorLine) + " in " + errorFile
+Console_WriteLine _STR_EMPTY
+Console_WriteLine "Runtime error" + STR$(ERR) + " (" + LCASE$(_ERRORMESSAGE$) + ") on line" + STR$(errorLine) + " in " + errorFile
 
 IF isInteractive THEN
     END ERR
