@@ -33,11 +33,11 @@ SEARCH_PATHS := $(QB64PE_PATH) . ../qb64pe ../QB64pe ../QB64PE
 
 QB64PE_PATH_FOUND = $(firstword $(foreach dir,$(SEARCH_PATHS),$(if $(wildcard $(dir)/qb64pe$(EXTENSION)),$(dir),)))
 
-ifeq ($(QB64PE_PATH_FOUND),)
-	$(error QB64-PE executable not found. Please set QB64PE_PATH.)
+ifneq ($(QB64PE_PATH_FOUND),)
+	QB64PE ?= $(QB64PE_PATH_FOUND)/qb64pe$(EXTENSION)
+else
+	QB64PE ?= qb64pe$(EXTENSION)
 endif
-
-QB64PE := $(QB64PE_PATH_FOUND)/qb64pe$(EXTENSION)
 
 $(info Using QB64PE from: $(QB64PE))
 
@@ -49,11 +49,15 @@ endif
 
 APP_EXECUTABLE := Brainfuck64$(EXTENSION)
 
+SOURCES := source/Brainfuck64.bas
+INCLUDES := $(wildcard source/*.bi)
+RESOURCES := source/Brainfuck64.ico
+
 .PHONY: all test clean
 
 all: $(APP_EXECUTABLE)
 
-$(APP_EXECUTABLE): Brainfuck64.bas
+$(APP_EXECUTABLE): $(SOURCES) $(INCLUDES) $(RESOURCES)
 	$(QB64PE) $(QB64PE_FLAGS) $< -o $@
 
 test: all
@@ -65,4 +69,9 @@ else
 endif
 
 clean:
-	-$(RM) $(APP_EXECUTABLE)
+ifeq ($(OS),Windows_NT)
+	@if exist "$(APP_EXECUTABLE)" del /q /f "$(APP_EXECUTABLE)"
+	@if exist "source\$(APP_EXECUTABLE)" del /q /f "source\$(APP_EXECUTABLE)"
+else
+	rm -rf $(APP_EXECUTABLE) source/$(APP_EXECUTABLE)
+endif

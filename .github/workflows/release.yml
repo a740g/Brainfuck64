@@ -37,8 +37,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          submodules: recursive
 
       - name: Download QB64-PE
         env:
@@ -96,15 +94,12 @@ jobs:
         run: |
           mkdir staging
           # Explicitly copy only allowed items
-          cp -r demos include Brainfuck64.bas LICENSE.txt README.md staging/
+          cp -r demos source LICENSE.txt README.md staging/
           cp ${{ matrix.bin_name }} staging/
-          if [ -f Brainfuck64.ico ]; then
-            cp Brainfuck64.ico staging/
-          fi
           if [[ "${{ runner.os }}" != "Windows" ]]; then
             chmod +x staging/${{ matrix.bin_name }}
           fi
-          # Clean up any git metadata from submodules
+          # Clean up any git metadata 
           find staging -name ".git*" -exec rm -rf {} +
 
           cd staging

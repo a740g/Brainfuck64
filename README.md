@@ -24,10 +24,10 @@ If run without arguments, a file selection dialog will appear.
 
 ### Build Instructions
 
-1. Clone the repository with submodules:
+1. Clone the repository:
 
     ```bash
-    git clone --recursive https://github.com/a740g/Brainfuck64.git
+    git clone https://github.com/a740g/Brainfuck64.git
     cd Brainfuck64
     ```
 
