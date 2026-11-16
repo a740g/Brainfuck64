@@ -93,15 +93,16 @@ FUNCTION Brainfuck_GenerateInitialIR& (source AS STRING, codes() AS _UNSIGNED _B
     DIM char AS _UNSIGNED _BYTE
     DIM AS LONG i, count
 
-    WHILE i < length
-        char = ASC(source, i + 1)
+    i = 1
+    WHILE i <= length
+        char = ASC(source, i)
 
         SELECT CASE char
             CASE _ASC_PLUS, _ASC_MINUS
                 DIM delta AS LONG: delta = 0
 
-                DO WHILE i < length
-                    char = ASC(source, i + 1)
+                DO WHILE i <= length
+                    char = ASC(source, i)
                     IF char = _ASC_PLUS THEN
                         delta = delta + 1
                     ELSEIF char = _ASC_MINUS THEN
@@ -123,8 +124,8 @@ FUNCTION Brainfuck_GenerateInitialIR& (source AS STRING, codes() AS _UNSIGNED _B
             CASE _ASC_GREATERTHAN, _ASC_LESSTHAN
                 DIM move AS LONG: move = 0
 
-                DO WHILE i < length
-                    char = ASC(source, i + 1)
+                DO WHILE i <= length
+                    char = ASC(source, i)
                     IF char = _ASC_GREATERTHAN THEN
                         move = move + 1
                     ELSEIF char = _ASC_LESSTHAN THEN
@@ -146,9 +147,9 @@ FUNCTION Brainfuck_GenerateInitialIR& (source AS STRING, codes() AS _UNSIGNED _B
             CASE _ASC_LEFTSQUAREBRACKET
                 DIM handled AS LONG: handled = _FALSE
 
-                IF i + 2 < length THEN
-                    DIM next1 AS _UNSIGNED _BYTE: next1 = ASC(source, i + 2)
-                    DIM next2 AS _UNSIGNED _BYTE: next2 = ASC(source, i + 3)
+                IF i + 2 <= length THEN
+                    DIM next1 AS _UNSIGNED _BYTE: next1 = ASC(source, i + 1)
+                    DIM next2 AS _UNSIGNED _BYTE: next2 = ASC(source, i + 2)
                     IF (next1 = _ASC_MINUS _ORELSE next1 = _ASC_PLUS) _ANDALSO next2 = _ASC_RIGHTSQUAREBRACKET THEN
                         codes(count) = OP_SET
                         values(count) = 0
