@@ -47,6 +47,7 @@ END TYPE
 
 SUB Brainfuck_Execute (sourceCode AS STRING, sourceName AS STRING)
     DIM cleanedCode AS STRING: cleanedCode = Brainfuck_GetCleanedCode(sourceCode)
+    IF LEN(cleanedCode) = 0 THEN EXIT SUB
 
     DIM initialCapacity AS LONG: initialCapacity = LEN(cleanedCode)
     REDIM opCodes(0 TO initialCapacity) AS _UNSIGNED _BYTE
@@ -69,18 +70,33 @@ FUNCTION Brainfuck_GetCleanedCode$ (source AS STRING)
     _CONSOLETITLE "Cleaning code..."
 
     DIM length AS LONG: length = LEN(source)
+    IF length = 0 THEN EXIT FUNCTION
+
     DIM buffer AS STRING: buffer = SPACE$(length)
     DIM char AS _UNSIGNED _BYTE
     DIM AS LONG i, writeIdx
 
+    STATIC isBrainfuckChar(0 TO 255) AS _BYTE
+    STATIC lutInitialized AS _BYTE
+
+    IF NOT lutInitialized THEN
+        isBrainfuckChar(_ASC_GREATERTHAN) = _TRUE
+        isBrainfuckChar(_ASC_LESSTHAN) = _TRUE
+        isBrainfuckChar(_ASC_PLUS) = _TRUE
+        isBrainfuckChar(_ASC_MINUS) = _TRUE
+        isBrainfuckChar(_ASC_FULLSTOP) = _TRUE
+        isBrainfuckChar(_ASC_COMMA) = _TRUE
+        isBrainfuckChar(_ASC_LEFTSQUAREBRACKET) = _TRUE
+        isBrainfuckChar(_ASC_RIGHTSQUAREBRACKET) = _TRUE
+        lutInitialized = _TRUE
+    END IF
+
     FOR i = 1 TO length
         char = ASC(source, i)
-
-        SELECT CASE char
-            CASE _ASC_GREATERTHAN, _ASC_LESSTHAN, _ASC_PLUS, _ASC_MINUS, _ASC_FULLSTOP, _ASC_COMMA, _ASC_LEFTSQUAREBRACKET, _ASC_RIGHTSQUAREBRACKET
-                writeIdx = writeIdx + 1
-                ASC(buffer, writeIdx) = char
-        END SELECT
+        IF isBrainfuckChar(char) THEN
+            writeIdx = writeIdx + 1
+            ASC(buffer, writeIdx) = char
+        END IF
     NEXT i
 
     Brainfuck_GetCleanedCode = LEFT$(buffer, writeIdx)
@@ -116,9 +132,13 @@ FUNCTION Brainfuck_GenerateInitialIR& (source AS STRING, codes() AS _UNSIGNED _B
                 i = i - 1
 
                 IF delta <> 0 THEN
-                    codes(count) = OP_ADD
-                    values(count) = delta
-                    count = count + 1
+                    IF count > 0 _ANDALSO codes(count - 1) = OP_SET THEN
+                        values(count - 1) = (values(count - 1) + delta) AND 255
+                    ELSE
+                        codes(count) = OP_ADD
+                        values(count) = delta
+                        count = count + 1
+                    END IF
                 END IF
 
             CASE _ASC_GREATERTHAN, _ASC_LESSTHAN
@@ -210,52 +230,97 @@ END SUB
 FUNCTION Brainfuck_OptimizePatterns& (count AS LONG, codes() AS _UNSIGNED _BYTE, values() AS LONG, aux() AS LONG, table() AS RelativeAddition)
     _CONSOLETITLE "Optimizing patterns..."
 
-    DIM AS LONG i, k, offset, entries, tableIdx
-    DIM ok AS _BYTE
+    DIM AS LONG i, k, target, tableIdx
+    DIM AS LONG curOffset, counterDelta, numDeltas, foundIdx, j, finalEntries
+    DIM loopOk AS _BYTE
+    DIM deltaOffsets(1 TO 64) AS LONG
+    DIM deltaMults(1 TO 64) AS LONG
 
     WHILE i < count
         IF codes(i) = OP_JZ THEN
-            DIM target AS LONG: target = values(i)
+            target = values(i)
 
             IF target = i + 2 _ANDALSO codes(i + 1) = OP_MOVE THEN
+                ' [>] or [<] scan loop
                 codes(i) = OP_SCAN_ZERO
                 values(i) = values(i + 1)
                 codes(i + 1) = OP_NOP
                 codes(target) = OP_NOP
-            ELSEIF codes(i + 1) = OP_ADD _ANDALSO values(i + 1) = -1 THEN
-                offset = 0
-                ok = _TRUE
+            ELSE
+                ' Check for copy / multiply loop: [ ... ]
+                ' Loop must contain only OP_MOVE and OP_ADD, net offset must be 0, counter delta must be -1
+                loopOk = _TRUE
+                curOffset = 0
+                counterDelta = 0
+                numDeltas = 0
 
-                FOR k = i + 2 TO target - 1
-                    IF codes(k) <> OP_MOVE _ANDALSO codes(k) <> OP_ADD THEN
-                        ok = _FALSE
+                FOR k = i + 1 TO target - 1
+                    IF codes(k) = OP_MOVE THEN
+                        curOffset = curOffset + values(k)
+                    ELSEIF codes(k) = OP_ADD THEN
+                        IF curOffset = 0 THEN
+                            counterDelta = counterDelta + values(k)
+                        ELSE
+                            foundIdx = 0
+                            FOR j = 1 TO numDeltas
+                                IF deltaOffsets(j) = curOffset THEN
+                                    foundIdx = j
+                                    EXIT FOR
+                                END IF
+                            NEXT j
+
+                            IF foundIdx > 0 THEN
+                                deltaMults(foundIdx) = deltaMults(foundIdx) + values(k)
+                            ELSE
+                                IF numDeltas < 64 THEN
+                                    numDeltas = numDeltas + 1
+                                    deltaOffsets(numDeltas) = curOffset
+                                    deltaMults(numDeltas) = values(k)
+                                ELSE
+                                    loopOk = _FALSE
+                                    EXIT FOR
+                                END IF
+                            END IF
+                        END IF
+                    ELSE
+                        loopOk = _FALSE
                         EXIT FOR
                     END IF
-                    IF codes(k) = OP_MOVE THEN offset = offset + values(k)
-                NEXT
+                NEXT k
 
-                IF ok _ANDALSO offset = 0 THEN
-                    codes(i) = OP_ADD_REL_MULTI
-                    values(i) = tableIdx
-                    offset = 0
-                    entries = 0
+                IF loopOk _ANDALSO curOffset = 0 _ANDALSO counterDelta = -1 THEN
+                    ' Count how many non-zero deltas we have
+                    finalEntries = 0
+                    FOR j = 1 TO numDeltas
+                        IF deltaMults(j) <> 0 THEN finalEntries = finalEntries + 1
+                    NEXT j
 
-                    FOR k = i + 2 TO target - 1
-                        IF codes(k) = OP_MOVE THEN
-                            offset = offset + values(k)
-                        ELSEIF codes(k) = OP_ADD THEN
-                            table(tableIdx).offset = offset
-                            table(tableIdx).multiplier = values(k)
-                            tableIdx = tableIdx + 1
-                            entries = entries + 1
+                    IF finalEntries > 0 THEN
+                        ' Make sure table has enough space
+                        IF tableIdx + finalEntries > UBOUND(table) THEN
+                            REDIM _PRESERVE table(0 TO UBOUND(table) + count + finalEntries) AS RelativeAddition
                         END IF
 
-                        codes(k) = OP_NOP
-                    NEXT
+                        codes(i) = OP_ADD_REL_MULTI
+                        values(i) = tableIdx
+                        aux(i) = finalEntries
 
-                    aux(i) = entries
-                    codes(i + 1) = OP_SET: values(i + 1) = 0
-                    codes(target) = OP_NOP
+                        FOR j = 1 TO numDeltas
+                            IF deltaMults(j) <> 0 THEN
+                                table(tableIdx).offset = deltaOffsets(j)
+                                table(tableIdx).multiplier = deltaMults(j)
+                                tableIdx = tableIdx + 1
+                            END IF
+                        NEXT j
+                    ELSE
+                        ' Counter was decremented to 0 and no other cells modified: equivalent to [-]
+                        codes(i) = OP_SET
+                        values(i) = 0
+                    END IF
+
+                    FOR k = i + 1 TO target
+                        codes(k) = OP_NOP
+                    NEXT k
                 END IF
             END IF
         END IF
@@ -289,7 +354,7 @@ FUNCTION Brainfuck_CompactInstructions& (count AS LONG, codes() AS _UNSIGNED _BY
     i = 0
     WHILE i < writeIdx
         IF codes(i) = OP_JZ _ORELSE codes(i) = OP_JNZ THEN
-            values(i) = mapping(values(i))
+            values(i) = mapping(values(i)) + 1
         END IF
 
         i = i + 1
@@ -304,6 +369,7 @@ SUB Brainfuck_RunInterpreter (count AS LONG, codes() AS _UNSIGNED _BYTE, values(
     REDIM memory(0 TO MEMORY_CHUNK_SIZE - 1) AS _UNSIGNED _BYTE
 
     DIM AS LONG pc, dataPtr, mult, stride, irTableBase, entries, i, target
+    DIM AS LONG maxMem: maxMem = UBOUND(memory)
 
     WHILE pc < count
         SELECT CASE codes(pc)
@@ -313,10 +379,11 @@ SUB Brainfuck_RunInterpreter (count AS LONG, codes() AS _UNSIGNED _BYTE, values(
             CASE OP_MOVE
                 dataPtr = dataPtr + values(pc)
 
-                IF dataPtr < 0 THEN ERROR _ERR_CANNOT_CONTINUE
-
-                IF dataPtr > UBOUND(memory) THEN
+                IF dataPtr > maxMem THEN
                     REDIM _PRESERVE memory(0 TO dataPtr + MEMORY_CHUNK_SIZE) AS _UNSIGNED _BYTE
+                    maxMem = UBOUND(memory)
+                ELSEIF dataPtr < 0 THEN
+                    ERROR _ERR_CANNOT_CONTINUE
                 END IF
 
             CASE OP_JZ
@@ -340,10 +407,11 @@ SUB Brainfuck_RunInterpreter (count AS LONG, codes() AS _UNSIGNED _BYTE, values(
                 DO WHILE memory(dataPtr) <> 0
                     dataPtr = dataPtr + stride
 
-                    IF dataPtr < 0 THEN ERROR _ERR_CANNOT_CONTINUE
-
-                    IF dataPtr > UBOUND(memory) THEN
+                    IF dataPtr > maxMem THEN
                         REDIM _PRESERVE memory(0 TO dataPtr + MEMORY_CHUNK_SIZE) AS _UNSIGNED _BYTE
+                        maxMem = UBOUND(memory)
+                    ELSEIF dataPtr < 0 THEN
+                        ERROR _ERR_CANNOT_CONTINUE
                     END IF
                 LOOP
 
@@ -354,20 +422,20 @@ SUB Brainfuck_RunInterpreter (count AS LONG, codes() AS _UNSIGNED _BYTE, values(
                     irTableBase = values(pc)
                     entries = aux(pc)
 
-                    i = 0
-                    DO WHILE i < entries
-                        target = dataPtr + table(irTableBase + i).offset
+                    FOR i = irTableBase TO irTableBase + entries - 1
+                        target = dataPtr + table(i).offset
 
-                        IF target < 0 THEN ERROR _ERR_CANNOT_CONTINUE
-
-                        IF target > UBOUND(memory) THEN
+                        IF target > maxMem THEN
                             REDIM _PRESERVE memory(0 TO target + MEMORY_CHUNK_SIZE) AS _UNSIGNED _BYTE
+                            maxMem = UBOUND(memory)
+                        ELSEIF target < 0 THEN
+                            ERROR _ERR_CANNOT_CONTINUE
                         END IF
 
-                        memory(target) = memory(target) + mult * table(irTableBase + i).multiplier
+                        memory(target) = memory(target) + mult * table(i).multiplier
+                    NEXT i
 
-                        i = i + 1
-                    LOOP
+                    memory(dataPtr) = 0
                 END IF
 
             CASE OP_OUT
@@ -414,6 +482,7 @@ IF _COMMANDCOUNT < 1 THEN
         IF LEN(selectedFile) THEN
             Console_WriteLine _STR_EMPTY
             Brainfuck_Execute File_Load(selectedFile), Pathname_GetFileName(selectedFile)
+            _ECHO _STR_EMPTY ' flush
         END IF
     LOOP WHILE LEN(selectedFile)
 ELSE
@@ -421,7 +490,7 @@ ELSE
     FOR argIndex = 1 TO _COMMANDCOUNT
         Brainfuck_Execute File_Load(COMMAND$(argIndex)), Pathname_GetFileName(COMMAND$(argIndex))
 
-        IF argIndex < _COMMANDCOUNT THEN Console_WriteLine _STR_EMPTY
+        IF argIndex < _COMMANDCOUNT THEN _ECHO _STR_EMPTY ' flush
     NEXT
 END IF
 
