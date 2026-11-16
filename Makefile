@@ -20,9 +20,14 @@ endif
 $(info OS: $(OS))
 
 ifeq ($(OS),Windows_NT)
-	RM := del /Q
 	EXTENSION := .exe
-	FIXPATH = $(subst /,\,$1)
+	ifeq ($(shell where rm 2>nul),)
+		RM := del /q /f
+		FIXPATH = $(subst /,\,$1)
+	else
+		RM := rm -f
+		FIXPATH = $1
+	endif
 else
 	RM := rm -fr
 	EXTENSION :=
@@ -68,9 +73,4 @@ else
 endif
 
 clean:
-ifeq ($(OS),Windows_NT)
-	@if exist "$(APP_EXECUTABLE)" del /q /f "$(APP_EXECUTABLE)"
-	@if exist "source\$(APP_EXECUTABLE)" del /q /f "source\$(APP_EXECUTABLE)"
-else
-	rm -rf $(APP_EXECUTABLE) source/$(APP_EXECUTABLE)
-endif
+	-$(RM) $(call FIXPATH,$(APP_EXECUTABLE)) $(call FIXPATH,source/$(APP_EXECUTABLE))
