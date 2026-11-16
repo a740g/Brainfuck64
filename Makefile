@@ -41,11 +41,7 @@ endif
 
 $(info Using QB64PE from: $(QB64PE))
 
-QB64PE_FLAGS := -x -w -e
-
-ifeq ($(OS),Windows_NT)
-	QB64PE_FLAGS += -f:OptimizeCppProgram=true
-endif
+QB64PE_FLAGS := -x -w -e -f:OptimizeCppProgram=true
 
 APP_EXECUTABLE := Brainfuck64$(EXTENSION)
 
@@ -53,9 +49,12 @@ SOURCES := source/Brainfuck64.bas
 INCLUDES := $(wildcard source/*.bi)
 RESOURCES := source/Brainfuck64.ico
 
-.PHONY: all test clean
+.PHONY: all release test clean
 
 all: $(APP_EXECUTABLE)
+
+release: clean
+	$(MAKE) all
 
 $(APP_EXECUTABLE): $(SOURCES) $(INCLUDES) $(RESOURCES)
 	$(QB64PE) $(QB64PE_FLAGS) $< -o $@
