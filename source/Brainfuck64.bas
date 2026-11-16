@@ -64,6 +64,8 @@ SUB Brainfuck_Execute (sourceCode AS STRING, sourceName AS STRING)
     instructionCount = Brainfuck_CompactInstructions(instructionCount, opCodes(), opValues(), opAuxValues())
 
     Brainfuck_RunInterpreter instructionCount, opCodes(), opValues(), opAuxValues(), multiAddTable(), sourceName
+
+    Console_Flush
 END SUB
 
 FUNCTION Brainfuck_GetCleanedCode$ (source AS STRING)
@@ -442,6 +444,7 @@ SUB Brainfuck_RunInterpreter (count AS LONG, codes() AS _UNSIGNED _BYTE, values(
                 Console_WriteChar memory(dataPtr)
 
             CASE OP_IN
+                Console_Flush
                 _CONSOLETITLE "[WAITING FOR INPUT] " + programName
                 memory(dataPtr) = Console_ReadChar
                 _CONSOLETITLE programName

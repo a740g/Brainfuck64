@@ -8,6 +8,7 @@ $INCLUDEONCE
 DECLARE LIBRARY
     FUNCTION Console_ReadChar& ALIAS "::getchar"
     SUB Console_WriteChar ALIAS "::putchar" (BYVAL ch AS LONG)
+    SUB Console_Flush ALIAS "std::cout.flush"
 END DECLARE
 
 SUB Console_WriteLine (text AS STRING)
