@@ -2,14 +2,16 @@
 
 # Brainfuck64 test runner for Linux/macOS
 
-BF="./Brainfuck64"
-FAILED=0
-
-# Ensure the executable exists
-if [ ! -f "$BF" ]; then
-    echo "Error: $BF not found. Please run 'make' first."
+if [ -f "./Brainfuck64.exe" ]; then
+    BF="./Brainfuck64.exe"
+elif [ -f "./Brainfuck64" ]; then
+    BF="./Brainfuck64"
+else
+    echo "Error: Brainfuck64 executable not found. Please run 'make' first."
     exit 1
 fi
+
+FAILED=0
 
 for test_file in tests/*.bf; do
     name=$(basename "$test_file" .bf)
